@@ -1,5 +1,4 @@
 import Navbar from "@/src/components/shared/Navbar";
-import LiveBanner from "@/src/components/shared/LiveBanner";
 import Footer from "@/src/components/shared/Footer";
 import HeroSection from "@/src/components/homeContent/sections/HeroSection";
 import WelcomeSection from "@/src/components/homeContent/sections/WelcomeSection";
