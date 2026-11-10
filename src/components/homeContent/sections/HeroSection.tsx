@@ -37,7 +37,7 @@ export default function HeroSection({
       {/* Carousel backgrounds */}
       {slides.map((slide, i) => (
         <div
-          key={slide.src.src}
+          key={`${i}-${slide.src}`}
           className={`absolute inset-0 bg-black transition-opacity duration-1000 ${i === current ? "opacity-100" : "opacity-0"}`}
         >
           <Image
