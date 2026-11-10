@@ -5,16 +5,31 @@ import Link from "next/link";
 import Logo from "@/src/assets/logo.png";
 import Image from "next/image";
 
-const navLinks = [
-  { label: "Home", href: "#hero" },
-  { label: "Sermons", href: "#sermons" },
-  { label: "Devotion", href: "#devotion" },
-  { label: "Community", href: "#community" },
-  { label: "Events", href: "#events", badge: "3" },
-  { label: "Give", href: "#give" },
+// Every link opens its own page. Sections that only scroll the homepage are
+// not listed here.
+const navLinks: { label: string; href: string; badge?: string }[] = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Sermons", href: "/sermons" },
+  { label: "Events", href: "/events" },
+  { label: "Connect", href: "/connect" },
+  { label: "Games", href: "/games" },
 ];
 
-export default function Navbar() {
+export default function Navbar({
+  liveUrl,
+  isLive = false,
+  eventCount = 0,
+}: {
+  liveUrl: string;
+  /** True while a matching stream is on air. */
+  isLive?: boolean;
+  /** Number of events coming up soon, shown as a badge on Events. */
+  eventCount?: number;
+}) {
+  const links = navLinks.map((l) =>
+    l.href === "/events" && eventCount > 0 ? { ...l, badge: String(eventCount) } : l,
+  );
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -51,7 +66,7 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-7">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.label}
               href={link.href}
@@ -66,13 +81,13 @@ export default function Navbar() {
             </Link>
           ))}
           <a
-            href="https://www.youtube.com/@RCCGRCGlobal/live"
+            href={liveUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-2 bg-red text-white text-sm font-semibold px-8 py-3 rounded-lg hover:bg-red-dark transition-colors duration-150 flex items-center gap-2"
           >
             <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse-dot" />
-            Watch Live
+            {isLive ? "Live now" : "Watch Live"}
           </a>
         </div>
 
@@ -127,7 +142,7 @@ export default function Navbar() {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-1">
-            {navLinks.map((link) => (
+            {links.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
@@ -145,14 +160,14 @@ export default function Navbar() {
           </div>
           <div className="p-6 border-t border-gray-2">
             <a
-              href="https://www.youtube.com/@RCCGRCGlobal/live"
+              href={liveUrl}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setMenuOpen(false)}
               className="flex items-center justify-center gap-2 w-full bg-red text-white font-semibold py-3 rounded-xl hover:bg-red-dark transition-colors"
             >
               <span className="w-2 h-2 bg-white rounded-full animate-pulse-dot" />
-              Watch Live
+              {isLive ? "Live now" : "Watch Live"}
             </a>
           </div>
         </div>

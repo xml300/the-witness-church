@@ -15,7 +15,7 @@
 
   /* ─── Fonts — Plus Jakarta Sans everywhere ─── */
   --font-plus-jakarta: var(--font-plus-jakarta-sans), system-ui, sans-serif;
-  --font-playfair: var(--font-plus-jakarta-sans), system-ui, sans-serif;
+  --font-playfair: var(--font-heading, var(--font-plus-jakarta-sans)), system-ui, sans-serif;
   --font-sans: var(--font-plus-jakarta-sans), system-ui, sans-serif;
 }
 
@@ -32,7 +32,7 @@ html {
 
 body {
   font-family: var(--font-plus-jakarta-sans), system-ui, sans-serif;
-  color: #1a1a2e;
+  color: var(--color-text);
   background: #ffffff;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -45,7 +45,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-plus-jakarta-sans), system-ui, sans-serif;
+  font-family: var(--font-heading, var(--font-plus-jakarta-sans)), system-ui, sans-serif;
   font-weight: 800;
   letter-spacing: -0.025em;
 }
@@ -109,6 +109,28 @@ h6 {
 
 /* ─── Focus ring ─── */
 :focus-visible {
-  outline: 2px solid #e53935;
+  outline: 2px solid var(--color-red);
   outline-offset: 2px;
+}
+
+/* Prayer wall: each prayer drifts slowly inside its own space. The movement
+   is smaller than the gaps between prayers, so they never overlap. */
+@keyframes prayer-drift {
+  from {
+    transform: translate(var(--x0), var(--y0)) rotate(var(--r0));
+  }
+  to {
+    transform: translate(var(--x1), var(--y1)) rotate(var(--r1));
+  }
+}
+
+.prayer-drift {
+  transform: translate(var(--x0, 0), var(--y0, 0)) rotate(var(--r0, 0deg));
+  animation: prayer-drift var(--dur, 24s) ease-in-out var(--delay, 0s) infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prayer-drift {
+    animation: none;
+  }
 }

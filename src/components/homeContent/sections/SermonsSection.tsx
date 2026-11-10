@@ -1,205 +1,135 @@
-"use client";
-
-import { useState } from "react";
-import Image from "next/image";
+import Link from "next/link";
 import { SectionTag, Heading } from "@/src/components/ui/Typography";
-import SermonCard from "@/src/components/homeContent/cards/SermonCard";
+import { formatMedium } from "@/src/lib/content/events";
+import type { SermonVideo } from "@/src/lib/data/types";
 
-const sermons = [
-  {
-    id: 0,
-    title: "\"When God Seems Silent\"",
-    pastor: "Pastor E. Okafor",
-    date: "May 19",
-    duration: "48:00",
-    series: "Unshakeable Faith",
-    fullDate: "May 19, 2025",
-    progress: 38,
-    elapsed: "18:32",
-    image: "https://images.unsplash.com/photo-1511367461429-433e1f3e83db?w=800&q=80",
-  },
-  {
-    id: 1,
-    title: "\"Rooted in the Word\"",
-    pastor: "Pastor E. Okafor",
-    date: "May 12",
-    duration: "52:14",
-    series: "Unshakeable Faith",
-    fullDate: "May 12, 2025",
-    progress: 0,
-    elapsed: "0:00",
-    image: "https://images.unsplash.com/photo-1511367461429-433e1f3e83db?w=800&q=80",
-  },
-  {
-    id: 2,
-    title: "\"The Promise of Peace\"",
-    pastor: "Min. Grace Adeyemi",
-    date: "May 5",
-    duration: "41:30",
-    series: "Women's Conference",
-    fullDate: "May 5, 2025",
-    progress: 0,
-    elapsed: "0:00",
-    image: "https://images.unsplash.com/photo-1511367461429-433e1f3e83db?w=800&q=80",
-  },
-  {
-    id: 3,
-    title: "\"Mountains Do Move\"",
-    pastor: "Pastor E. Okafor",
-    date: "Apr 28",
-    duration: "55:08",
-    series: "Unshakeable Faith",
-    fullDate: "Apr 28, 2025",
-    progress: 0,
-    elapsed: "0:00",
-    image: "https://images.unsplash.com/photo-1511367461429-433e1f3e83db?w=800&q=80",
-  },
-];
+/* Thumbnails come straight from YouTube, so a plain img is used. */
+/* eslint-disable @next/next/no-img-element */
 
-export default function SermonsSection() {
-  const [activeId, setActiveId] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const sermon = sermons[activeId];
+export default function SermonsSection({
+  sermons,
+  pinnedIds,
+  channelUrl,
+}: {
+  sermons: SermonVideo[];
+  pinnedIds: string[];
+  channelUrl: string;
+}) {
+  const [featured, ...rest] = sermons;
 
   return (
     <section id="sermons" className="bg-white py-20 px-6 md:px-12 lg:px-16">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
           <div>
             <SectionTag>Audio &amp; Video Messages</SectionTag>
             <Heading as="h2">
-              Listen. Learn.
+              Messages That
               <br />
-              Be Transformed.
+              Move You Forward
             </Heading>
           </div>
-          <a href="/sermons" className="text-[13px] text-navy/60 hover:text-navy font-medium transition-colors flex-shrink-0">
-            Full Sermon Library →
-          </a>
+          <Link
+            href="/sermons"
+            className="text-[13px] text-navy/60 hover:text-navy font-medium transition-colors flex-shrink-0"
+          >
+            All Sermons →
+          </Link>
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-7">
-          {/* Player */}
-          <div className="bg-navy rounded-2xl overflow-hidden">
-            {/* Artwork */}
-            <div className="relative h-[220px]">
-              <Image
-                src={sermon.image}
-                alt={`${sermon.title} sermon artwork`}
-                fill
-                className="object-cover"
-                sizes="(max-width: 1024px) 100vw, 55vw"
+        {!featured ? (
+          <div className="bg-gray-bg border border-gray-2 rounded-2xl p-10 text-center">
+            <p className="text-muted mb-4">
+              Our messages are on YouTube. Watch the latest there while the
+              sermon library is being set up.
+            </p>
+            <a
+              href={channelUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-red text-white font-semibold text-[13px] px-6 py-3 rounded-xl hover:bg-red-dark transition-colors"
+            >
+              Watch on YouTube
+            </a>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-5">
+            <a
+              href={featured.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative block rounded-2xl overflow-hidden bg-navy min-h-[280px]"
+            >
+              <img
+                src={featured.thumb}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-navy via-navy/40 to-transparent" />
-
-              {/* Badge */}
-              <span className="absolute top-4 left-4 bg-red text-white text-[10px] font-bold tracking-[1px] uppercase px-3 py-1 rounded-full">
-                Latest Message
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-black/10" />
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="w-16 h-16 rounded-full bg-red flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white ml-1" aria-hidden="true">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
               </span>
+              <span className="absolute bottom-0 left-0 right-0 p-6">
+                {pinnedIds.includes(featured.id) && (
+                  <span className="inline-block bg-white/15 backdrop-blur text-white text-[10px] font-bold tracking-[1.5px] uppercase px-3 py-1 rounded-full mb-3">
+                    Pinned
+                  </span>
+                )}
+                <span className="block font-playfair text-[22px] md:text-[26px] font-bold text-white leading-snug">
+                  {featured.title}
+                </span>
+                {featured.date && (
+                  <span className="block text-[12px] text-white/65 mt-2">
+                    {formatMedium(featured.date)}
+                  </span>
+                )}
+              </span>
+            </a>
 
-              {/* Play button */}
-              <button
-                onClick={() => setPlaying(!playing)}
-                className="absolute inset-0 flex items-center justify-center group"
-                aria-label={playing ? "Pause" : "Play"}
-              >
-                <div className="w-16 h-16 bg-white/15 border-2 border-white/50 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:bg-white/25 transition-all duration-150">
-                  {playing ? (
-                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white" aria-hidden="true">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white ml-1" aria-hidden="true">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </div>
-              </button>
-            </div>
-
-            {/* Controls */}
-            <div className="p-6">
-              <p className="text-[10px] font-bold tracking-[2px] uppercase text-red mb-1">
-                Series: {sermon.series}
-              </p>
-              <h3 className="font-playfair text-[20px] font-semibold text-white mb-1">
-                {sermon.title}
-              </h3>
-              <p className="text-[13px] text-white/50 mb-5">
-                {sermon.pastor} · {sermon.fullDate}
-              </p>
-
-              {/* Progress */}
-              <div className="h-1 bg-white/15 rounded-full mb-2 overflow-hidden">
-                <div
-                  className="h-full bg-red rounded-full transition-all"
-                  style={{ width: `${sermon.progress}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] text-white/40 mb-4">
-                <span>{sermon.elapsed}</span>
-                <span>{sermon.duration}</span>
-              </div>
-
-              {/* Playback buttons */}
-              <div className="flex items-center justify-center gap-5">
-                {[
-                  { icon: "⏮", label: "Previous" },
-                  { icon: "⏪", label: "Rewind" },
-                ].map((ctrl) => (
-                  <button key={ctrl.label} aria-label={ctrl.label} className="text-white/50 hover:text-white transition-colors text-lg">
-                    {ctrl.icon}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setPlaying(!playing)}
-                  aria-label={playing ? "Pause" : "Play"}
-                  className="w-11 h-11 bg-red rounded-full flex items-center justify-center hover:bg-red-dark transition-colors"
+            <div className="flex flex-col gap-3">
+              {rest.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex gap-4 items-center bg-gray-bg border border-gray-2 rounded-2xl p-3 hover:border-red/40 transition-colors"
                 >
-                  {playing ? (
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white" aria-hidden="true">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white ml-0.5" aria-hidden="true">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </button>
-                {[
-                  { icon: "⏩", label: "Fast forward" },
-                  { icon: "⏭", label: "Next" },
-                ].map((ctrl) => (
-                  <button key={ctrl.label} aria-label={ctrl.label} className="text-white/50 hover:text-white transition-colors text-lg">
-                    {ctrl.icon}
-                  </button>
-                ))}
-              </div>
+                  <img
+                    src={s.thumb}
+                    alt=""
+                    className="w-28 aspect-video object-cover rounded-xl flex-shrink-0"
+                  />
+                  <span className="min-w-0">
+                    {pinnedIds.includes(s.id) && (
+                      <span className="block text-[10px] font-bold tracking-[1.5px] uppercase text-red mb-1">
+                        Pinned
+                      </span>
+                    )}
+                    <span className="block text-[14px] font-semibold text-navy leading-snug line-clamp-2">
+                      {s.title}
+                    </span>
+                    {s.date && (
+                      <span className="block text-[12px] text-muted mt-1">
+                        {formatMedium(s.date)}
+                      </span>
+                    )}
+                  </span>
+                </a>
+              ))}
+              <Link
+                href="/sermons"
+                className="text-center text-[13px] font-semibold text-red hover:text-red-dark transition-colors pt-2"
+              >
+                Browse the full sermon library →
+              </Link>
             </div>
           </div>
-
-          {/* Sermon list */}
-          <div className="flex flex-col gap-3">
-            {sermons.map((s) => (
-              <SermonCard
-                key={s.id}
-                title={s.title}
-                pastor={s.pastor}
-                date={s.date}
-                duration={s.duration}
-                active={activeId === s.id}
-                onClick={() => { setActiveId(s.id); setPlaying(true); }}
-              />
-            ))}
-            <div className="text-center pt-3">
-              <a href="/sermons" className="text-[13px] text-navy/60 hover:text-navy font-medium transition-colors">
-                Browse All 240+ Messages →
-              </a>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );

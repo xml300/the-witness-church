@@ -3,39 +3,31 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import boyPraying from "@/src/assets/hero/boy-praying.png";
-import girlPraying from "@/src/assets/hero/girl-praying.png";
-import hgf from "@/src/assets/hero/hgf.png";
-import pastorPraying from "@/src/assets/hero/pastor-praying.png";
-import womanPraying from "@/src/assets/hero/woman-praying.png";
+import type { HeroSlide, SiteInfo } from "@/src/lib/content/types";
 
-const slides = [
-  { src: hgf, alt: "Church congregation" },
-  { src: boyPraying, alt: "Boy in prayer" },
-  { src: girlPraying, alt: "Girl in prayer" },
-  { src: pastorPraying, alt: "Pastor in prayer" },
-  { src: womanPraying, alt: "Woman in prayer" },
-];
-
-const stats = [
-  { value: "3,200+", label: "Members" },
-  { value: "12", label: "Life Groups" },
-  { value: "18 yrs", label: "Established" },
-  { value: "5", label: "Service Times" },
-];
-
-export default function HeroSection() {
+export default function HeroSection({
+  slides,
+  info,
+  autoplay = true,
+}: {
+  slides: HeroSlide[];
+  info: SiteInfo;
+  /** The editor preview holds still so it does not flicker while editing. */
+  autoplay?: boolean;
+}) {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
+    if (!autoplay || slides.length < 2) return;
     const timer = setInterval(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, []);
+  }, [autoplay, slides.length]);
 
-  const prev = () => setCurrent((c) => (c - 1 + slides.length) % slides.length);
-  const next = () => setCurrent((c) => (c + 1) % slides.length);
+  const count = Math.max(slides.length, 1);
+  const prev = () => setCurrent((c) => (c - 1 + count) % count);
+  const next = () => setCurrent((c) => (c + 1) % count);
 
   return (
     <section
@@ -60,7 +52,10 @@ export default function HeroSection() {
       ))}
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/65 z-10" />
+      <div
+        className="absolute inset-0 bg-black z-10"
+        style={{ opacity: info.heroShade / 100 }}
+      />
       <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-black/20 z-10" />
 
       {/* Prev / Next arrows */}
@@ -113,27 +108,29 @@ export default function HeroSection() {
         <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8">
           <span className="w-2 h-2 rounded-full bg-red animate-pulse-dot" />
           <span className="text-[11px] font-bold tracking-[2.5px] uppercase text-white/80">
-            Welcome to The Witness Church
+            <span data-edit="site_info.heroEyebrow">{info.heroEyebrow}</span>
           </span>
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[80px] font-extrabold text-white leading-[1.04] tracking-tight mb-6">
-          Where Faith <span className="text-red">Meets</span>
+          <span data-edit="site_info.heroLine1">{info.heroLine1}</span>{" "}
+          <span className="text-red" data-edit="site_info.heroAccent">
+            {info.heroAccent}
+          </span>
           <br />
-          Community
+          <span data-edit="site_info.heroLine2">{info.heroLine2}</span>
         </h1>
 
         {/* Subtext */}
         <p className="text-white/60 text-[17px] leading-[1.75] mb-10 max-w-130 mx-auto">
-          Authentic worship. Transformative teaching. A community that walks
-          with you through every season of life.
+          <span data-edit="site_info.heroSubtext">{info.heroSubtext}</span>
         </p>
 
         {/* CTAs */}
         <div className="flex flex-wrap items-center justify-center gap-4">
           <Link
-            href="#sermons"
+            href={info.primaryCtaHref}
             className="inline-flex items-center gap-2.5 bg-red text-white font-bold text-[14px] px-8 py-4 rounded-2xl hover:bg-red-dark transition-all duration-150 active:scale-95 shadow-xl shadow-red/25"
           >
             <svg
@@ -143,13 +140,13 @@ export default function HeroSection() {
             >
               <path d="M8 5v14l11-7z" />
             </svg>
-            Watch Latest Sermon
+            <span data-edit="site_info.primaryCtaLabel">{info.primaryCtaLabel}</span>
           </Link>
           <Link
-            href="#community"
+            href={info.secondaryCtaHref}
             className="inline-flex items-center gap-2 border border-white/35 text-white font-semibold text-[14px] px-8 py-4 rounded-2xl hover:bg-white/10 transition-all duration-150"
           >
-            Plan Your Visit
+            <span data-edit="site_info.secondaryCtaLabel">{info.secondaryCtaLabel}</span>
           </Link>
         </div>
       </div>
