@@ -87,7 +87,7 @@ export async function setQuestionActive(id: string, active: boolean): Promise<Re
 export async function importQuestions(
   game: GameId,
   text: string,
-): Promise<Result<{ added: number; skipped: number }>> {
+): Promise<Result<{ added: number; skipped: number; rows: QuestionRow[] }>> {
   const admin = await getAdmin();
   if (!admin) return { ok: false, error: SIGNED_OUT };
   if (game !== "quiz" && game !== "quote" && game !== "hunt") return { ok: false, error: "Unknown game." };
@@ -120,9 +120,11 @@ export async function importQuestions(
     seen.add(k);
     return true;
   });
+  let added: QuestionRow[] = [];
   if (fresh.length) {
-    const { error } = await admin.supabase.from("game_questions").insert(fresh);
+    const { data, error } = await admin.supabase.from("game_questions").insert(fresh).select("*");
     if (error) return { ok: false, error: "Could not import. Nothing was added." };
+    added = (data ?? []) as QuestionRow[];
   }
-  return { ok: true, added: fresh.length, skipped: rows.length - fresh.length };
+  return { ok: true, added: fresh.length, skipped: rows.length - fresh.length, rows: added };
 }

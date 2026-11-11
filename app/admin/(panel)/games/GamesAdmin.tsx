@@ -158,7 +158,8 @@ export default function GamesAdmin({ initial }: { initial: QuestionRow[] }) {
     start(async () => {
       const res = await importQuestions(game, text);
       if (!res.ok) return setError(res.error);
-      setMsg(`Added ${res.added}${res.skipped ? `, skipped ${res.skipped} duplicate${res.skipped > 1 ? "s" : ""}` : ""}. Reload to see them.`);
+      setRows((prev) => [...res.rows, ...prev]);
+      setMsg(`Added ${res.added}${res.skipped ? `, skipped ${res.skipped} duplicate${res.skipped > 1 ? "s" : ""}` : ""}.`);
       setText("");
       setImporting(false);
     });

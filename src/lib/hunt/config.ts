@@ -14,6 +14,7 @@ export type HuntConfig = {
   key4: string;
   founders_photo_url: string;
   founders_intro: string;
+  word_hint: string;
   clue2_title: string;
   clue2_body: string;
   clue3_title: string;

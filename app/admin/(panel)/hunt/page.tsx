@@ -14,7 +14,7 @@ export default async function HuntAdminPage() {
 
   const [cfg, founders, chest] = await Promise.all([
     admin.supabase.from("hunt_config").select("*").eq("id", 1).maybeSingle(),
-    admin.supabase.from("hunt_founders").select("number,name,aliases").order("number"),
+    admin.supabase.from("hunt_founders").select("name,aliases").order("number"),
     admin.supabase.from("hunt_chest_opens").select("id,team_name,opened_at").order("opened_at"),
   ]);
   const top = await leaderboard({ game: "hunt", difficulty: "all", limit: 3 });

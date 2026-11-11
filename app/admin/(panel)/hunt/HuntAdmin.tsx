@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { uploadImage } from "@/app/admin/_editor/fields";
 import { deleteChestOpen, saveFounders, saveHuntConfig, type ConfigInput } from "./actions";
 
-export type Founder = { number: number; name: string; aliases: string[] };
+export type Founder = { name: string; aliases: string[] };
 export type ChestRow = { id: string; team_name: string; opened_at: string };
 
 const input =
@@ -61,7 +61,6 @@ export default function HuntAdmin({
     start(async () => {
       const res = await saveFounders(
         people.map((p) => ({
-          number: Number(p.number),
           name: p.name,
           aliases: p.aliasText.split(",").map((a) => a.trim()).filter(Boolean),
         })),
@@ -89,8 +88,6 @@ export default function HuntAdmin({
         {msg.text}
       </p>
     );
-
-  const nextNumber = Math.max(0, ...people.map((p) => Number(p.number) || 0)) + 1;
 
   return (
     <div className="grid gap-6">
@@ -171,9 +168,12 @@ export default function HuntAdmin({
           </label>
         </div>
         <p className="text-[12px] text-muted">
-          Number each person on the photo yourself before uploading. The photo link is hidden until Key 1 is entered,
-          but anyone who finds the link could open it, so avoid sharing it.
+          Upload a plain photo with no numbers or labels. Players have to work out who the founding members are. The
+          photo link is hidden until Key 1 is entered, but anyone who finds the link could open it, so avoid sharing it.
         </p>
+        <label className={label}>Word hint (shown only after a player names every founding member)
+          <textarea rows={2} value={c.word_hint} onChange={(e) => set({ word_hint: e.target.value })} className={input} placeholder="For example: take the first letter of each name, in order of age." />
+        </label>
       </section>
 
       {/* ---------- clues and rewards ---------- */}
@@ -239,18 +239,13 @@ export default function HuntAdmin({
       <section className={card}>
         <h2 className="text-[16px] font-bold text-navy">Founding members (answers)</h2>
         <p className="text-[13px] text-muted">
-          Players are marked right if they type the full name, any single name of 3 or more letters, or one of the
-          other spellings you list.
+          List every founding member, and only them. Players must type exactly this many names, each one matching a
+          different person here, to pass Game 2. A name counts if it is the full name, any single name of 3 or more
+          letters, or one of the other spellings you list. There are currently <strong>{people.filter((p) => p.name.trim()).length}</strong> founding members.
         </p>
         {people.map((p, i) => (
-          <div key={i} className="grid grid-cols-[4rem_1fr_1fr_auto] gap-2 items-center">
-            <input
-              type="number"
-              aria-label="Number on the photo"
-              value={p.number}
-              onChange={(e) => setPeople(people.map((x, j) => (j === i ? { ...x, number: Number(e.target.value) } : x)))}
-              className={input}
-            />
+          <div key={i} className="grid grid-cols-[1.5rem_1fr_1fr_auto] gap-2 items-center">
+            <span className="text-[13px] font-bold text-muted">{i + 1}.</span>
             <input
               aria-label="Name"
               placeholder="Full name"
@@ -272,7 +267,7 @@ export default function HuntAdmin({
         ))}
         <button
           type="button"
-          onClick={() => setPeople([...people, { number: nextNumber, name: "", aliases: [], aliasText: "" }])}
+          onClick={() => setPeople([...people, { name: "", aliases: [], aliasText: "" }])}
           className="justify-self-start text-[13px] font-semibold text-navy underline"
         >
           Add a person
