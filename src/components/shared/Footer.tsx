@@ -1,15 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
+import LogoMark from "@/src/assets/logo-mark.png";
 import type { SiteInfo } from "@/src/lib/content/types";
 
 type FooterLink = { label: string; href: string };
 
-const ministries: FooterLink[] = [
-  { label: "Children's Ministry", href: "/connect" },
-  { label: "Youth Ministry", href: "/connect" },
-  { label: "Women's Fellowship", href: "/connect" },
-  { label: "Men's Brotherhood", href: "/connect" },
-  { label: "Marriage Ministry", href: "/connect" },
-  { label: "Prayer Ministry", href: "/#prayer" },
+const explore: FooterLink[] = [
+  { label: "Home", href: "/" },
+  { label: "About", href: "/about" },
+  { label: "Sermons", href: "/sermons" },
+  { label: "Events", href: "/events" },
+  { label: "Connect", href: "/connect" },
+  { label: "Games", href: "/games" },
 ];
 
 const resources: FooterLink[] = [
@@ -49,10 +51,8 @@ export default function Footer({ info }: { info: SiteInfo }) {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-red flex items-center justify-center flex-shrink-0">
-                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white" aria-hidden="true">
-                  <path d="M11 2v8H3v4h8v8h4v-8h8v-4h-8V2z" />
-                </svg>
+              <div className="w-11 h-11 rounded-lg bg-white flex items-center justify-center flex-shrink-0 p-1">
+                <Image src={LogoMark} alt="The Witness Church logo" className="w-full h-auto" />
               </div>
               <div>
                 <div className="font-playfair text-[15px] font-semibold text-white leading-snug">
@@ -105,13 +105,13 @@ export default function Footer({ info }: { info: SiteInfo }) {
             </div>
           </div>
 
-          {/* Ministries */}
+          {/* Explore */}
           <div>
             <h4 className="text-[11px] font-bold tracking-[2px] uppercase text-red mb-4">
-              Ministries
+              Explore
             </h4>
             <ul className="flex flex-col gap-2">
-              {ministries.map((item) => (
+              {explore.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}

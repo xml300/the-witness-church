@@ -35,6 +35,8 @@ create table if not exists public.hunt_config (
   key4               text not null default '',
   founders_photo_url text not null default '',
   founders_intro     text not null default '',
+  -- Shown after a player names every founding member: how names make the word.
+  word_hint          text not null default '',
   -- Shown when a key is entered.
   clue2_title        text not null default 'Clue for Game 3',
   clue2_body         text not null default '',
@@ -47,6 +49,9 @@ create table if not exists public.hunt_config (
   bonus_hint         text not null default '',
   updated_at         timestamptz not null default now()
 );
+-- Safe if the table was created before word_hint existed.
+alter table public.hunt_config add column if not exists word_hint text not null default '';
+
 insert into public.hunt_config (id) values (1) on conflict (id) do nothing;
 
 -- -------------------------------------------------------------- founders

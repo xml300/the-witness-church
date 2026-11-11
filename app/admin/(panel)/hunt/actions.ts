@@ -19,6 +19,7 @@ export type ConfigInput = {
   key4: string;
   founders_photo_url: string;
   founders_intro: string;
+  word_hint: string;
   clue2_title: string;
   clue2_body: string;
   clue3_title: string;
@@ -80,6 +81,7 @@ export async function saveHuntConfig(input: ConfigInput): Promise<Result> {
       key4: keys[3],
       founders_photo_url: s(input.founders_photo_url, 600),
       founders_intro: s(input.founders_intro, 600),
+      word_hint: s(input.word_hint, 600),
       clue2_title: s(input.clue2_title, 80),
       clue2_body: s(input.clue2_body, 1500),
       clue3_title: s(input.clue3_title, 80),
@@ -93,28 +95,24 @@ export async function saveHuntConfig(input: ConfigInput): Promise<Result> {
   return error ? { ok: false, error: "Could not save. Has migration-006 been run?" } : { ok: true };
 }
 
-export type FounderInput = { number: number; name: string; aliases: string[] };
+export type FounderInput = { name: string; aliases: string[] };
 
-/** Replaces the whole list. */
+/** Replaces the whole list. The photo is not numbered, so numbers are only
+ *  internal and follow the order entered. */
 export async function saveFounders(list: FounderInput[]): Promise<Result> {
   const admin = await getAdmin();
   if (!admin) return { ok: false, error: SIGNED_OUT };
   if (!Array.isArray(list) || list.length > 60) return { ok: false, error: "Too many people." };
 
-  const clean: FounderInput[] = [];
-  for (const f of list) {
-    const number = int(f.number, 1, 99);
+  const clean: { number: number; name: string; aliases: string[] }[] = [];
+  for (const [i, f] of list.entries()) {
     const name = s(f.name, 80);
-    if (number === null) return { ok: false, error: "Each number must be 1 to 99." };
-    if (!name) return { ok: false, error: `Person ${number} needs a name.` };
+    if (!name) return { ok: false, error: `Row ${i + 1} needs a name, or remove it.` };
     const aliases = (Array.isArray(f.aliases) ? f.aliases : [])
       .map((a) => s(a, 60))
       .filter(Boolean)
       .slice(0, 10);
-    clean.push({ number, name, aliases });
-  }
-  if (new Set(clean.map((f) => f.number)).size !== clean.length) {
-    return { ok: false, error: "Each person needs a different number." };
+    clean.push({ number: i + 1, name, aliases });
   }
 
   if (clean.length) {
@@ -122,10 +120,7 @@ export async function saveFounders(list: FounderInput[]): Promise<Result> {
     if (error) return { ok: false, error: "Could not save the people." };
   }
   const del = admin.supabase.from("hunt_founders").delete();
-  const keep = clean.map((f) => f.number);
-  const { error: delErr } = keep.length
-    ? await del.not("number", "in", `(${keep.join(",")})`)
-    : await del.gte("number", 0);
+  const { error: delErr } = clean.length ? await del.gt("number", clean.length) : await del.gte("number", 0);
   return delErr ? { ok: false, error: "Saved, but could not remove old entries." } : { ok: true };
 }
 

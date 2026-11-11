@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import {
-  checkNamesAction,
+  checkFoundersAction,
   chestBoardAction,
   openChestAction,
   submitWordAction,
@@ -11,7 +11,7 @@ import {
   unlockFoundersAction,
 } from "@/app/hunt/actions";
 import type { ChestResult, Clue, FoundersView, HuntStatus } from "@/src/lib/hunt/service";
-import { loadHuntKeys, saveHuntKey } from "@/src/components/games/util";
+import { clearHuntKeys, loadHuntKeys, saveHuntKey } from "@/src/components/games/util";
 
 type Board = Awaited<ReturnType<typeof chestBoardAction>>;
 
@@ -76,8 +76,9 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
 
   const [k1, setK1] = useState(saved[1]);
   const [founders, setFounders] = useState<FoundersView | null>(null);
-  const [names, setNames] = useState<Record<number, string>>({});
-  const [marks, setMarks] = useState<Record<number, boolean> | null>(null);
+  const [names, setNames] = useState<string[]>(["", ""]);
+  const [listOk, setListOk] = useState(false);
+  const [wordHint, setWordHint] = useState("");
   const [word, setWord] = useState("");
   const [clue2, setClue2] = useState<Clue | null>(null);
   const [k2, setK2] = useState(saved[2]);
@@ -112,19 +113,26 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
     });
   };
 
-  const checkNames = () =>
+  const filledNames = () => names.map((n) => n.trim()).filter(Boolean);
+
+  const checkList = () =>
     void run("n", async () => {
-      const r = await checkNamesAction(k1, names);
+      const r = await checkFoundersAction(k1, filledNames());
       if (!r.ok) return say("n", r.error);
-      setMarks(r.data);
-      const right = Object.values(r.data).filter(Boolean).length;
-      say("n", `${right} of ${Object.keys(r.data).length} names are right.`);
+      setListOk(r.data.passed);
+      setWordHint(r.data.wordHint);
+      say(
+        "n",
+        r.data.passed
+          ? "That is the complete list of founding members. Now find the word."
+          : "Not quite. Look at the photo again. Is anyone missing, or did you include someone who is not a founding member?",
+      );
     });
 
   const sendWord = (e: React.FormEvent) => {
     e.preventDefault();
     void run("w", async () => {
-      const r = await submitWordAction(k1, word);
+      const r = await submitWordAction(k1, filledNames(), word);
       if (!r.ok) return say("w", r.error);
       saveHuntKey(2, r.data.key2);
       setKeys((k) => ({ ...k, 2: r.data.key2 }));
@@ -201,35 +209,78 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
               // eslint-disable-next-line @next/next/no-img-element
               <img src={founders.photoUrl} alt="The founding members, each numbered" className="w-full rounded-xl border border-gray-2 mb-5" />
             )}
-            <p className="text-[14px] font-semibold text-text mb-2">Who is each numbered person?</p>
-            <div className="grid sm:grid-cols-2 gap-3 mb-3">
-              {founders.numbers.map((n) => (
-                <label key={n} className="flex items-center gap-2">
-                  <span className="w-7 h-7 shrink-0 rounded-full bg-navy text-white text-[12px] font-bold flex items-center justify-center">{n}</span>
+            <p className="text-[14px] font-semibold text-text mb-1">Who are the founding members in this photo?</p>
+            <p className="text-[13px] text-muted mb-3">
+              Not everyone in the photo may be a founding member. Add a name for each founding member, as many as
+              you need. You only pass when your list is exactly right.
+            </p>
+            <div className="grid gap-2 mb-3">
+              {names.map((n, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="w-6 text-[13px] font-bold text-muted text-right">{i + 1}.</span>
                   <input
-                    aria-label={`Name of person ${n}`}
-                    value={names[n] ?? ""}
-                    onChange={(e) => setNames({ ...names, [n]: e.target.value })}
-                    className={`${field} ${marks ? (marks[n] ? "border-green-500" : "border-red") : ""}`}
+                    aria-label={`Founding member ${i + 1}`}
+                    value={n}
+                    disabled={listOk}
+                    onChange={(e) => {
+                      setNames(names.map((x, j) => (j === i ? e.target.value : x)));
+                      setListOk(false);
+                    }}
+                    className={field}
                     autoComplete="off"
+                    placeholder="Name"
                   />
-                  {marks && <span aria-label={marks[n] ? "Correct" : "Not right"}>{marks[n] ? "✓" : "✗"}</span>}
-                </label>
+                  {names.length > 1 && !listOk && (
+                    <button
+                      type="button"
+                      aria-label={`Remove name ${i + 1}`}
+                      onClick={() => { setNames(names.filter((_, j) => j !== i)); setListOk(false); }}
+                      className="text-muted hover:text-red-dark text-[18px] px-2"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
-            <button onClick={checkNames} disabled={busy === "n"} className="border border-navy/30 text-navy font-semibold text-[14px] px-5 py-2.5 rounded-xl hover:bg-navy hover:text-white transition-colors">
-              {busy === "n" ? "Checking…" : "Check my names"}
-            </button>
-            {msg.n && <p role="status" className="text-[13px] text-muted mt-2">{msg.n}</p>}
+            {!listOk && (
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => setNames([...names, ""])}
+                  disabled={names.length >= 40}
+                  className="border border-gray-2 text-navy font-semibold text-[14px] px-5 py-2.5 rounded-xl hover:border-navy transition-colors"
+                >
+                  + Add another name
+                </button>
+                <button
+                  type="button"
+                  onClick={checkList}
+                  disabled={busy === "n" || filledNames().length === 0}
+                  className="border border-navy/30 text-navy font-semibold text-[14px] px-5 py-2.5 rounded-xl hover:bg-navy hover:text-white disabled:opacity-60 transition-colors"
+                >
+                  {busy === "n" ? "Checking…" : "Check my list"}
+                </button>
+              </div>
+            )}
+            {msg.n && (
+              <p role="status" className={`text-[13px] mt-2 ${listOk ? "text-green-800 font-semibold" : "text-muted"}`}>
+                {msg.n}
+              </p>
+            )}
 
+            {listOk && (
             <form onSubmit={sendWord} className="mt-6 pt-5 border-t border-gray-2 grid gap-3 max-w-sm">
-              <p className="text-[14px] text-muted">Use the names to work out the secret word.</p>
+              <p className="text-[14px] text-muted whitespace-pre-wrap">
+                {wordHint || "Use the names to work out the secret word."}
+              </p>
               <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="The word" className={field} autoComplete="off" />
               <button disabled={!word.trim() || busy === "w"} className={primary}>
                 {busy === "w" ? "Checking…" : "Submit the word"}
               </button>
               {msg.w && <p role="alert" className="text-[13px] text-red-dark">{msg.w}</p>}
             </form>
+            )}
           </div>
         )}
         {clue2 && (
@@ -323,6 +374,19 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
           </div>
         )}
       </Step>
+
+      {(keys[1] || keys[2] || keys[3] || keys[4]) && (
+        <button
+          type="button"
+          onClick={() => {
+            clearHuntKeys();
+            window.location.reload();
+          }}
+          className="justify-self-center text-[13px] text-muted underline hover:text-navy"
+        >
+          Clear the keys saved on this device
+        </button>
+      )}
     </div>
   );
 }

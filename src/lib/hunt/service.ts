@@ -61,70 +61,101 @@ export async function huntStatus(): Promise<HuntStatus | null> {
 
 /* --------------------------------------------------- Game 2: founders */
 
-export type FoundersView = { photoUrl: string; intro: string; numbers: number[] };
+export type FoundersView = { photoUrl: string; intro: string };
 
 export async function unlockFounders(key1: unknown): Promise<Res<FoundersView>> {
   const c = await getHuntConfig();
-  const db = serviceClient();
-  if (!c || !db) return { ok: false, error: NOT_READY };
+  if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
   const g = await allowGuess();
   if (!g.ok) return { ok: false, error: TOO_MANY };
   if (!sameKey(key1, c.key1)) return { ok: false, error: "That is not the right key." };
   const w = huntWindow(c);
   if (w === "not-open") return { ok: false, error: "This game has not opened yet." };
   if (w === "closed") return { ok: false, error: "This game has closed." };
-
-  const { data } = await db.from("hunt_founders").select("number").order("number");
-  return {
-    ok: true,
-    data: {
-      photoUrl: c.founders_photo_url,
-      intro: c.founders_intro,
-      numbers: ((data ?? []) as { number: number }[]).map((r) => r.number),
-    },
-  };
+  return { ok: true, data: { photoUrl: c.founders_photo_url, intro: c.founders_intro } };
 }
 
-/** Which typed names are right, by number. Never returns the names. */
-export async function checkNames(
-  key1: unknown,
-  guesses: unknown,
-): Promise<Res<Record<number, boolean>>> {
-  const c = await getHuntConfig();
-  const db = serviceClient();
-  if (!c || !db) return { ok: false, error: NOT_READY };
-  if (!sameKey(key1, c.key1)) return { ok: false, error: "That is not the right key." };
-  if (huntWindow(c) !== "open") return { ok: false, error: "This game is not open." };
-  if (typeof guesses !== "object" || guesses === null) return { ok: false, error: "No names sent." };
+type Founder = { name: string; aliases: string[] };
 
-  const { data } = await db.from("hunt_founders").select("number,name,aliases");
-  const out: Record<number, boolean> = {};
-  const given = guesses as Record<string, unknown>;
-  for (const f of (data ?? []) as { number: number; name: string; aliases: string[] }[]) {
-    const raw = given[String(f.number)];
-    const guess = typeof raw === "string" ? norm(raw.slice(0, 80)) : "";
-    if (!guess) {
-      out[f.number] = false;
-      continue;
+function acceptedNames(f: Founder): Set<string> {
+  const tokens = f.name.split(/\s+/).map(norm).filter((t) => t.length >= 3);
+  return new Set([norm(f.name), ...f.aliases.map(norm), ...tokens]);
+}
+
+/** True only if the typed names are exactly the founding members: the same
+ *  number of names as founders, and every founder matched by a different
+ *  name. Uses a proper matching, so two names that both fit one founder (a
+ *  shared surname) cannot stand in for two people. */
+function isCompleteList(names: string[], founders: Founder[]): boolean {
+  if (founders.length === 0 || names.length !== founders.length) return false;
+  const accepted = founders.map(acceptedNames);
+  const takenBy: number[] = Array(founders.length).fill(-1); // founder -> name index
+
+  const place = (nameIdx: number, seen: boolean[]): boolean => {
+    const guess = norm(names[nameIdx]);
+    for (let f = 0; f < founders.length; f++) {
+      if (seen[f] || !accepted[f].has(guess)) continue;
+      seen[f] = true;
+      if (takenBy[f] === -1 || place(takenBy[f], seen)) {
+        takenBy[f] = nameIdx;
+        return true;
+      }
     }
-    const tokens = f.name.split(/\s+/).map(norm).filter((t) => t.length >= 3);
-    const accepted = new Set([norm(f.name), ...f.aliases.map(norm), ...tokens]);
-    out[f.number] = accepted.has(guess);
+    return false;
+  };
+
+  for (let i = 0; i < names.length; i++) {
+    if (!place(i, Array(founders.length).fill(false))) return false;
   }
-  return { ok: true, data: out };
+  return true;
 }
 
-export type Clue = { title: string; body: string };
+function cleanNames(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((n) => (typeof n === "string" ? n.trim().slice(0, 80) : ""))
+    .filter(Boolean)
+    .slice(0, 60);
+}
 
-/** The word players build from the names. It is Key 2. */
-export async function submitWord(key1: unknown, word: unknown): Promise<Res<{ key2: string; clue: Clue }>> {
+async function founderRows(): Promise<Founder[]> {
+  const db = serviceClient()!;
+  const { data } = await db.from("hunt_founders").select("name,aliases");
+  return (data ?? []) as Founder[];
+}
+
+/** Pass or fail only. The answer never says how many were right, or how many
+ *  founders there are. */
+export async function checkFounders(key1: unknown, names: unknown): Promise<Res<{ passed: boolean; wordHint: string }>> {
   const c = await getHuntConfig();
   if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
   const g = await allowGuess();
   if (!g.ok) return { ok: false, error: TOO_MANY };
   if (!sameKey(key1, c.key1)) return { ok: false, error: "That is not the right key." };
   if (huntWindow(c) !== "open") return { ok: false, error: "This game is not open." };
-  if (!sameKey(word, c.key2)) return { ok: false, error: "That is not the word. Check your names and try again." };
+  const passed = isCompleteList(cleanNames(names), await founderRows());
+  return { ok: true, data: { passed, wordHint: passed ? c.word_hint : "" } };
+}
+
+export type Clue = { title: string; body: string };
+
+/** The word players build from the names. It is Key 2. The names are sent
+ *  again and re-checked, so the word step can't be reached without a full list. */
+export async function submitWord(
+  key1: unknown,
+  names: unknown,
+  word: unknown,
+): Promise<Res<{ key2: string; clue: Clue }>> {
+  const c = await getHuntConfig();
+  if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
+  const g = await allowGuess();
+  if (!g.ok) return { ok: false, error: TOO_MANY };
+  if (!sameKey(key1, c.key1)) return { ok: false, error: "That is not the right key." };
+  if (huntWindow(c) !== "open") return { ok: false, error: "This game is not open." };
+  if (!isCompleteList(cleanNames(names), await founderRows())) {
+    return { ok: false, error: "Your list of founding members is not complete yet." };
+  }
+  if (!sameKey(word, c.key2)) return { ok: false, error: "That is not the word. Look at the names again." };
   return { ok: true, data: { key2: c.key2, clue: { title: c.clue2_title, body: c.clue2_body } } };
 }
 

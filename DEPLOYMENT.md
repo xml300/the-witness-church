@@ -81,12 +81,12 @@ Players use `/hunt`. Game 1 (Church Trivia) is at `/hunt/trivia`. Games 3 and 4 
 
 **Set up (admin)**
 1. `/admin/games`, tab **Church Trivia**: add the sermon and church questions (or import a JSON list).
-2. `/admin/hunt`: set the opening and closing times, pass mark, the four keys, the clue texts and the rewards by finishing order. Upload the numbered founders photo and enter each person's name (and other spellings).
+2. `/admin/hunt`: set the opening and closing times, pass mark, the four keys, the clue texts and the rewards by finishing order. Upload a plain, unnumbered founders photo, list every founding member (and other spellings), and write the word hint players see after they get the list right.
 3. Keys are the same for every team. Key 1 is given automatically to anyone who passes Game 1. Key 2 is the word built from the founders' names. Keys 3 and 4 are sent by the game master in WhatsApp.
 
 **Dry run before the event** (use a private window and a test team name)
 1. Play `/hunt/trivia` and pass; confirm Key 1 appears.
-2. On `/hunt` unlock Game 2 with Key 1, check names, submit the word, confirm the Game 3 clue appears.
+2. On `/hunt` unlock Game 2 with Key 1. Try one name too many, one too few and one wrong name (each should fail), then the exact list (the word step opens). Submit the word and confirm the Game 3 clue appears.
 3. Enter Key 3 to see the Game 4 clue, then open the chest with all four keys and confirm the reward.
 4. In `/admin/hunt` > Chest log, remove your test team so it does not take a finishing place.
 5. Also remove test scores if needed: Supabase > Table Editor > `game_runs` (filter `game = hunt`).

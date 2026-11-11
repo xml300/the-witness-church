@@ -77,3 +77,11 @@ export function saveHuntKey(n: 1 | 2 | 3 | 4, key: string) {
     /* ignore */
   }
 }
+
+export function clearHuntKeys() {
+  try {
+    localStorage.removeItem(HUNT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
