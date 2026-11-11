@@ -6,11 +6,13 @@ import {
   checkFoundersAction,
   chestBoardAction,
   openChestAction,
+  submitKeyPhraseAction,
   submitWordAction,
   unlockClueAction,
+  unlockGame4Action,
   unlockFoundersAction,
 } from "@/app/hunt/actions";
-import type { ChestResult, Clue, FoundersView, HuntStatus } from "@/src/lib/hunt/service";
+import type { ChestResult, Clue, FoundersView, HuntStatus, VideoView } from "@/src/lib/hunt/service";
 import { clearHuntKeys, loadHuntKeys, saveHuntKey } from "@/src/components/games/util";
 
 type Board = Awaited<ReturnType<typeof chestBoardAction>>;
@@ -51,6 +53,60 @@ function Step({
   );
 }
 
+/** Turns a pasted link into something we can show: a YouTube, Vimeo or Drive
+ *  player, a plain video file, or (for anything else) just a link. */
+function playerFor(url: string): { kind: "frame" | "file" | "link"; src: string } {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    let id = "";
+    if (host === "youtu.be") id = u.pathname.slice(1);
+    else if (host.endsWith("youtube.com")) {
+      id = u.searchParams.get("v") ?? "";
+      const m = u.pathname.match(/^\/(?:shorts|embed|live)\/([\w-]+)/);
+      if (!id && m) id = m[1];
+    }
+    if (/^[\w-]{6,20}$/.test(id)) return { kind: "frame", src: `https://www.youtube-nocookie.com/embed/${id}` };
+    if (host === "vimeo.com") {
+      const v = u.pathname.match(/\/(\d+)/);
+      if (v) return { kind: "frame", src: `https://player.vimeo.com/video/${v[1]}` };
+    }
+    if (host === "drive.google.com") {
+      const d = u.pathname.match(/\/file\/d\/([\w-]+)/);
+      if (d) return { kind: "frame", src: `https://drive.google.com/file/d/${d[1]}/preview` };
+    }
+    if (/\.(mp4|webm|mov|m4v)$/i.test(u.pathname)) return { kind: "file", src: url };
+  } catch {
+    /* fall through to a plain link */
+  }
+  return { kind: "link", src: url };
+}
+
+function VideoPlayer({ url, title }: { url: string; title: string }) {
+  const p = playerFor(url);
+  if (p.kind === "frame") {
+    return (
+      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black">
+        <iframe
+          src={p.src}
+          title={title || "The pastor's video"}
+          className="w-full h-full"
+          allow="encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      </div>
+    );
+  }
+  if (p.kind === "file") {
+    return <video src={p.src} controls playsInline className="w-full rounded-xl bg-black" />;
+  }
+  return (
+    <a href={p.src} target="_blank" rel="noopener noreferrer" className={`${primary} inline-block`}>
+      Watch the video
+    </a>
+  );
+}
+
 function ClueBox({ clue }: { clue: Clue }) {
   return (
     <div className="mt-4 bg-pink-light rounded-xl p-4" aria-live="polite">
@@ -84,6 +140,8 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
   const [k2, setK2] = useState(saved[2]);
   const [k3, setK3] = useState(saved[3]);
   const [clue3, setClue3] = useState<Clue | null>(null);
+  const [video, setVideo] = useState<VideoView | null>(null);
+  const [phrase, setPhrase] = useState("");
   const [team, setTeam] = useState("");
   const [boxes, setBoxes] = useState([saved[1], saved[2], saved[3], saved[4]]);
   const [result, setResult] = useState<ChestResult | null>(null);
@@ -144,18 +202,34 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
 
   const unlockClue = (stage: 2 | 3, key: string) =>
     void run(`c${stage}`, async () => {
+      if (stage === 3) {
+        const r = await unlockGame4Action(key);
+        if (!r.ok) return say("c3", r.error);
+        saveHuntKey(3, key.trim());
+        setKeys((k) => ({ ...k, 3: key.trim() }));
+        setClue3(r.data.clue);
+        setVideo(r.data.video);
+        setBoxes((b) => [b[0], b[1], key.trim(), b[3]]);
+        return;
+      }
       const r = await unlockClueAction(stage, key);
       if (!r.ok) return say(`c${stage}`, r.error);
-      saveHuntKey(stage, key.trim());
-      setKeys((k) => ({ ...k, [stage]: key.trim() }));
-      if (stage === 2) {
-        setClue2(r.data);
-        setBoxes((b) => [b[0], key.trim(), b[2], b[3]]);
-      } else {
-        setClue3(r.data);
-        setBoxes((b) => [b[0], b[1], key.trim(), b[3]]);
-      }
+      saveHuntKey(2, key.trim());
+      setKeys((k) => ({ ...k, 2: key.trim() }));
+      setClue2(r.data);
+      setBoxes((b) => [b[0], key.trim(), b[2], b[3]]);
     });
+
+  const sendPhrase = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run("p", async () => {
+      const r = await submitKeyPhraseAction(keys[3] || k3, phrase);
+      if (!r.ok) return say("p", r.error);
+      saveHuntKey(4, r.data.key4);
+      setKeys((k) => ({ ...k, 4: r.data.key4 }));
+      setBoxes((b) => [b[0], b[1], b[2], r.data.key4]);
+    });
+  };
 
   const chest = (e: React.FormEvent) => {
     e.preventDefault();
@@ -292,9 +366,22 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
         )}
       </Step>
 
-      <Step n={3} title="Clue for Game 3" locked={!clue2} done={!!clue2}>
+      <Step n={3} title="Game 3: Year 2 Sermon Quiz" locked={!clue2} done={!!keys[3]}>
         {clue2 ? (
-          <ClueBox clue={clue2} />
+          <>
+            <ClueBox clue={clue2} />
+            <p className="text-[14px] text-muted mt-4">
+              Take the sermon quiz on your own. Score the pass mark to win Key 3.
+            </p>
+            {keys[3] ? (
+              <p className="text-[14px] mt-2">
+                Your Key 3: <strong className="tracking-wide text-navy">{keys[3]}</strong>
+              </p>
+            ) : null}
+            <Link href="/hunt/sermon" className={`${primary} inline-block mt-3`}>
+              {keys[3] ? "Play again" : "Play the Sermon Quiz"}
+            </Link>
+          </>
         ) : (
           <form
             onSubmit={(e) => { e.preventDefault(); unlockClue(2, k2); }}
@@ -302,23 +389,49 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
           >
             <p className="text-[14px] text-muted">Already have Key 2? Enter it here.</p>
             <input value={k2} onChange={(e) => setK2(e.target.value)} placeholder="Key 2" className={field} autoComplete="off" />
-            <button disabled={!k2.trim() || busy === "c2"} className={primary}>Unlock the clue</button>
+            <button disabled={!k2.trim() || busy === "c2"} className={primary}>Unlock Game 3</button>
             {msg.c2 && <p role="alert" className="text-[13px] text-red-dark">{msg.c2}</p>}
           </form>
         )}
       </Step>
 
-      <Step n={4} title="Clue for Game 4" locked={!clue3} done={!!clue3}>
+      <Step n={4} title="Game 4: The Pastor's Video" locked={!clue3} done={!!keys[4]}>
         {clue3 ? (
-          <ClueBox clue={clue3} />
+          <>
+            <ClueBox clue={clue3} />
+            {video && (
+              <div className="mt-5">
+                {video.title && <p className="text-[15px] font-bold text-navy mb-1">{video.title}</p>}
+                {video.intro && <p className="text-[14px] text-muted mb-3 whitespace-pre-wrap">{video.intro}</p>}
+                {video.window === "not-open" && <p className="text-[14px] font-semibold text-red-dark">This game has not opened yet.</p>}
+                {video.window === "closed" && <p className="text-[14px] font-semibold text-red-dark">This game has closed.</p>}
+                {video.url && <VideoPlayer url={video.url} title={video.title} />}
+                {video.window === "open" && !keys[4] && (
+                  <form onSubmit={sendPhrase} className="mt-4 grid gap-3 max-w-sm">
+                    <p className="text-[14px] text-muted">Watch closely, then type the key phrase.</p>
+                    <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="The key phrase" className={field} autoComplete="off" />
+                    <button disabled={!phrase.trim() || busy === "p"} className={primary}>
+                      {busy === "p" ? "Checking…" : "Submit the key phrase"}
+                    </button>
+                    {msg.p && <p role="alert" className="text-[13px] text-red-dark">{msg.p}</p>}
+                  </form>
+                )}
+              </div>
+            )}
+            {keys[4] && (
+              <p className="mt-4 text-[14px]">
+                Key 4: <strong className="tracking-wide text-navy">{keys[4]}</strong>. You now have all four keys.
+              </p>
+            )}
+          </>
         ) : (
           <form
             onSubmit={(e) => { e.preventDefault(); unlockClue(3, k3); }}
             className="grid gap-3 max-w-sm"
           >
-            <p className="text-[14px] text-muted">Win Key 3 in the WhatsApp group, then enter it here.</p>
+            <p className="text-[14px] text-muted">Win Key 3 in Game 3, then enter it here.</p>
             <input value={k3} onChange={(e) => setK3(e.target.value)} placeholder="Key 3" className={field} autoComplete="off" />
-            <button disabled={!k3.trim() || busy === "c3"} className={primary}>Unlock the clue</button>
+            <button disabled={!k3.trim() || busy === "c3"} className={primary}>Unlock Game 4</button>
             {msg.c3 && <p role="alert" className="text-[13px] text-red-dark">{msg.c3}</p>}
           </form>
         )}

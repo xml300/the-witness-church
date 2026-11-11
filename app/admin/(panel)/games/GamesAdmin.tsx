@@ -170,7 +170,7 @@ export default function GamesAdmin({ initial }: { initial: QuestionRow[] }) {
   return (
     <div>
       <div className="flex gap-2 mb-5" role="tablist">
-        {(["quiz", "quote", "hunt"] as const).map((g) => (
+        {(["quiz", "quote", "hunt", "sermon"] as const).map((g) => (
           <button
             key={g}
             role="tab"
@@ -229,7 +229,7 @@ export default function GamesAdmin({ initial }: { initial: QuestionRow[] }) {
         <div className="bg-white border border-gray-2 rounded-2xl p-5 mb-5">
           <p className="text-[13px] text-muted mb-2">
             Paste a JSON list. {game !== "quote"
-              ? "Each item needs question, options, correctIndex, difficulty (easy, medium, hard, expert; ignored for Church Trivia) and optionally reference, explanation, testament, caption. The old app's file format also works."
+              ? "Each item needs question, options, correctIndex, difficulty (easy, medium, hard, expert; ignored for Church Trivia and the Sermon Quiz) and optionally reference, explanation, testament, caption. The old app's file format also works."
               : "Each item needs reference, hint, funFact and translations: { modern: { text }, kjv: { text } }, with {{double braces}} around blankable words."}{" "}
             Duplicates are skipped. If any item is invalid, nothing is imported.
           </p>
@@ -318,7 +318,7 @@ export default function GamesAdmin({ initial }: { initial: QuestionRow[] }) {
             <span className="flex-1 min-w-0">
               <span className="block text-[14px] font-semibold text-text truncate">{titleOf(r)}</span>
               <span className="block text-[12px] text-muted">
-                {r.game === "quote" ? (r.payload as QuotePayload).hint : r.game === "hunt" ? (r.payload as QuizPayload).reference : `${LEVEL_LABEL[r.difficulty as "easy"] ?? ""} · ${(r.payload as QuizPayload).reference}`}
+                {r.game === "quote" ? (r.payload as QuotePayload).hint : r.game === "hunt" || r.game === "sermon" ? (r.payload as QuizPayload).reference : `${LEVEL_LABEL[r.difficulty as "easy"] ?? ""} · ${(r.payload as QuizPayload).reference}`}
                 {!r.active ? " · hidden" : ""}
               </span>
             </span>

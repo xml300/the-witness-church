@@ -8,6 +8,19 @@ import type { ConfigInput } from "./actions";
 export const metadata: Metadata = { title: "Treasure hunt" };
 export const dynamic = "force-dynamic";
 
+/** Used until migration 007 has added the Game 3 and 4 columns. */
+const NEW_DEFAULTS = {
+  g3_pass_mark: 70,
+  g3_question_count: 10,
+  g3_max_attempts: null,
+  g34_opens_at: null,
+  g34_closes_at: null,
+  key_phrase: "",
+  video_url: "",
+  video_title: "",
+  video_intro: "",
+};
+
 export default async function HuntAdminPage() {
   const admin = await getAdmin();
   if (!admin) return null;
@@ -42,7 +55,7 @@ export default async function HuntAdminPage() {
           </p>
         ) : (
           <HuntAdmin
-            config={cfg.data as ConfigInput}
+            config={{ ...NEW_DEFAULTS, ...(cfg.data as ConfigInput) }}
             founders={(founders.data ?? []) as Founder[]}
             chest={(chest.data ?? []) as ChestRow[]}
             top={top.map((t) => ({ name: t.playerName, score: `${t.score}/${t.total}` }))}

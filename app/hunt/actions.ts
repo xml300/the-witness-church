@@ -4,13 +4,16 @@ import {
   checkFounders,
   chestBoard,
   openChest,
+  submitKeyPhrase,
   submitWord,
   unlockClue,
+  unlockGame4,
   unlockFounders,
   type ChestResult,
   type Clue,
   type FoundersView,
   type Res,
+  type VideoView,
 } from "@/src/lib/hunt/service";
 
 /** Thin wrappers: every check lives in src/lib/hunt/service.ts. All
@@ -42,4 +45,12 @@ export async function openChestAction(team: unknown, keys: unknown): Promise<Res
 
 export async function chestBoardAction() {
   return chestBoard();
+}
+
+export async function unlockGame4Action(key3: unknown): Promise<Res<{ clue: Clue; video: VideoView | null }>> {
+  return unlockGame4(key3);
+}
+
+export async function submitKeyPhraseAction(key3: unknown, phrase: unknown): Promise<Res<{ key4: string }>> {
+  return submitKeyPhrase(key3, phrase);
 }

@@ -32,6 +32,7 @@ export async function startRoundAction(input: {
   translation: unknown;
   questionCount: unknown;
   roomCode?: unknown;
+  huntKey?: unknown;
 }): Promise<Result<StartedRun>> {
   return startRun(input);
 }

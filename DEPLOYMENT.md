@@ -28,6 +28,7 @@ The site needs these in place or `/admin` and the prayer wall will not work. Ful
    4. `supabase/migration-004-games.sql` (game tables)
    5. `supabase/migration-005-games-seed.sql` (300 quiz questions, 22 verses; skipped if already seeded)
    6. `supabase/migration-006-hunt.sql` (anniversary treasure hunt)
+   7. `supabase/migration-007-games-3-4.sql` (Game 3 Sermon Quiz and Game 4 video; additive, safe while the hunt is live)
 2. Authentication > Users > Add user. Use the admin email from `schema.sql`, tick **Auto Confirm User**.
 3. Authentication > Sign In / Providers > turn off "Allow new users to sign up".
 

@@ -144,18 +144,18 @@ export default function Results({
         >
           {summary.award.passed && summary.award.key ? (
             <>
-              <p className="text-[12px] font-bold tracking-[2px] uppercase text-green-800">You won Key 1</p>
+              <p className="text-[12px] font-bold tracking-[2px] uppercase text-green-800">You won Key {summary.award.keyNo}</p>
               <p className="text-[28px] font-extrabold text-navy tracking-wide mt-1">{summary.award.key}</p>
-              <p className="text-[13px] text-muted mt-1">It is saved on this device. Keep it safe, you need it for Game 2.</p>
+              <p className="text-[13px] text-muted mt-1">It is saved on this device. Keep it safe, you need it for the chest{summary.award.keyNo === 1 ? " and Game 2" : ""}.</p>
               <Link href="/hunt" className="inline-block mt-3 bg-red text-white font-semibold text-[14px] px-6 py-2.5 rounded-xl hover:bg-red-dark transition-colors">
-                On to Game 2
+                {summary.award.keyNo === 1 ? "On to Game 2" : "On to Game 4"}
               </Link>
             </>
           ) : (
             <>
               <p className="text-[15px] font-bold text-red-dark">Not quite there yet</p>
               <p className="text-[13px] text-muted mt-1">
-                You need {summary.award.passMark}% to win Key 1. You scored {summary.percentage}%. Try again!
+                You need {summary.award.passMark}% to win Key {summary.award.keyNo}. You scored {summary.percentage}%. Try again!
               </p>
             </>
           )}
