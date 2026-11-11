@@ -27,6 +27,15 @@ export type ConfigInput = {
   rewards: string[];
   reward_default: string;
   bonus_hint: string;
+  g3_pass_mark: number;
+  g3_question_count: number;
+  g3_max_attempts: number | null;
+  g34_opens_at: string | null;
+  g34_closes_at: string | null;
+  key_phrase: string;
+  video_url: string;
+  video_title: string;
+  video_intro: string;
 };
 
 const s = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -55,6 +64,25 @@ export async function saveHuntConfig(input: ConfigInput): Promise<Result> {
   if (opens === undefined || closes === undefined) return { ok: false, error: "A date is not valid." };
   if (opens && closes && closes <= opens) {
     return { ok: false, error: "The closing time must be after the opening time." };
+  }
+
+  const pass3 = int(input.g3_pass_mark ?? 70, 1, 100);
+  const count3 = int(input.g3_question_count ?? 10, 1, 50);
+  if (pass3 === null) return { ok: false, error: "The Game 3 pass mark must be between 1 and 100." };
+  if (count3 === null) return { ok: false, error: "Game 3 questions must be between 1 and 50." };
+  const attempts3 = input.g3_max_attempts == null ? null : int(input.g3_max_attempts, 1, 20);
+  if (input.g3_max_attempts != null && attempts3 === null) {
+    return { ok: false, error: "Game 3 attempts must be 1 to 20, or empty." };
+  }
+  const opens34 = date(input.g34_opens_at ?? null);
+  const closes34 = date(input.g34_closes_at ?? null);
+  if (opens34 === undefined || closes34 === undefined) return { ok: false, error: "A date is not valid." };
+  if (opens34 && closes34 && closes34 <= opens34) {
+    return { ok: false, error: "Games 3 and 4 must close after they open." };
+  }
+  const video = s(input.video_url, 600);
+  if (video && !/^https?:\/\//i.test(video)) {
+    return { ok: false, error: "The video link must start with http:// or https://." };
   }
 
   const keys = [s(input.key1, 60), s(input.key2, 60), s(input.key3, 60), s(input.key4, 60)];
@@ -89,10 +117,19 @@ export async function saveHuntConfig(input: ConfigInput): Promise<Result> {
       rewards,
       reward_default: s(input.reward_default, 400),
       bonus_hint: s(input.bonus_hint, 600),
+      g3_pass_mark: pass3,
+      g3_question_count: count3,
+      g3_max_attempts: attempts3,
+      g34_opens_at: opens34,
+      g34_closes_at: closes34,
+      key_phrase: s(input.key_phrase, 200),
+      video_url: video,
+      video_title: s(input.video_title, 120),
+      video_intro: s(input.video_intro, 600),
       updated_at: new Date().toISOString(),
     })
     .eq("id", 1);
-  return error ? { ok: false, error: "Could not save. Has migration-006 been run?" } : { ok: true };
+  return error ? { ok: false, error: "Could not save. Have migrations 006 and 007 been run?" } : { ok: true };
 }
 
 export type FounderInput = { name: string; aliases: string[] };

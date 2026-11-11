@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { serviceClient } from "@/src/lib/supabase/service";
 import { cleanName } from "@/src/lib/games/engine";
-import { getHuntConfig, huntWindow, norm, sameKey, type HuntWindow } from "./config";
+import { getHuntConfig, huntWindow, norm, quizStage, sameKey, type HuntGameId, type HuntWindow } from "./config";
 
 export type Res<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -46,16 +46,17 @@ export type HuntStatus = {
   passMark: number;
 };
 
-/** Safe for anyone: no keys, names or rewards. */
-export async function huntStatus(): Promise<HuntStatus | null> {
+/** Safe for anyone: no keys, names or rewards. Game 1 by default. */
+export async function huntStatus(game: HuntGameId = "hunt"): Promise<HuntStatus | null> {
   const c = await getHuntConfig();
   if (!c) return null;
+  const stage = quizStage(c, game);
   return {
     title: c.title,
-    window: huntWindow(c),
-    opensAt: c.opens_at,
-    closesAt: c.closes_at,
-    passMark: c.pass_mark,
+    window: huntWindow({ opens_at: stage.opensAt, closes_at: stage.closesAt }),
+    opensAt: stage.opensAt,
+    closesAt: stage.closesAt,
+    passMark: stage.passMark,
   };
 }
 
@@ -174,6 +175,44 @@ export async function unlockClue(stage: unknown, key: unknown): Promise<Res<Clue
   }
   if (!sameKey(key, c.key3)) return { ok: false, error: "That is not the right key." };
   return { ok: true, data: { title: c.clue3_title, body: c.clue3_body } };
+}
+
+/* ----------------------------------------------- Game 4: the video */
+
+export type VideoView = { url: string; title: string; intro: string; window: HuntWindow };
+
+/** Key 3 opens the Game 4 clue and, when it is set up, the pastor's video. */
+export async function unlockGame4(key3: unknown): Promise<Res<{ clue: Clue; video: VideoView | null }>> {
+  const c = await getHuntConfig();
+  if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
+  const g = await allowGuess();
+  if (!g.ok) return { ok: false, error: TOO_MANY };
+  if (!sameKey(key3, c.key3)) return { ok: false, error: "That is not the right key." };
+  const window = huntWindow({ opens_at: c.g34_opens_at, closes_at: c.g34_closes_at });
+  return {
+    ok: true,
+    data: {
+      clue: { title: c.clue3_title, body: c.clue3_body },
+      // The link is only handed over while the game is open.
+      video: c.video_url.trim()
+        ? { url: window === "open" ? c.video_url.trim() : "", title: c.video_title, intro: c.video_intro, window }
+        : null,
+    },
+  };
+}
+
+/** The right phrase from the video wins Key 4 (the phrase itself is not a key). */
+export async function submitKeyPhrase(key3: unknown, phrase: unknown): Promise<Res<{ key4: string }>> {
+  const c = await getHuntConfig();
+  if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
+  const g = await allowGuess();
+  if (!g.ok) return { ok: false, error: TOO_MANY };
+  if (!sameKey(key3, c.key3)) return { ok: false, error: "Enter Key 3 first." };
+  const w = huntWindow({ opens_at: c.g34_opens_at, closes_at: c.g34_closes_at });
+  if (w === "not-open") return { ok: false, error: "This game has not opened yet." };
+  if (w === "closed") return { ok: false, error: "This game has closed." };
+  if (!sameKey(phrase, c.key_phrase)) return { ok: false, error: "That is not the key phrase. Watch the video again." };
+  return { ok: true, data: { key4: c.key4 } };
 }
 
 /* --------------------------------------------------------- the chest */

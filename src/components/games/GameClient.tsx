@@ -6,6 +6,7 @@ import { startRoundAction } from "@/app/games/actions";
 import {
   DEFAULT_ROUND,
   GAMES,
+  isHuntGame,
   LEVELS,
   LEVEL_LABEL,
   NAME_MAX,
@@ -24,7 +25,7 @@ import MyRuns from "./MyRuns";
 import PlayRound from "./PlayRound";
 import Results from "./Results";
 import RoomTools from "./RoomTools";
-import { gamePath, loadName, rememberRun, roomPath, saveHuntKey, saveName } from "./util";
+import { gamePath, loadHuntKeys, loadName, rememberRun, roomPath, saveHuntKey, saveName } from "./util";
 
 type Phase = "setup" | "play" | "results";
 type Tab = "board" | "mine" | "rooms";
@@ -57,6 +58,9 @@ export default function GameClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [refresh, setRefresh] = useState(0);
+  const isHunt = isHuntGame(game);
+  // Game 3 (Sermon Quiz) opens with Key 2, remembered from the hunt page.
+  const [huntKey, setHuntKey] = useState(() => (game === "sermon" ? loadHuntKeys()[2] : ""));
 
   const start = useCallback(async () => {
     setBusy(true);
@@ -68,6 +72,7 @@ export default function GameClient({
       translation,
       questionCount: rounds,
       roomCode: room?.code,
+      huntKey: game === "sermon" ? huntKey : undefined,
     });
     setBusy(false);
     if (!res.ok) {
@@ -78,11 +83,11 @@ export default function GameClient({
     setRun(res.data);
     setSummary(null);
     setPhase("play");
-  }, [game, name, level, translation, rounds, room]);
+  }, [game, name, level, translation, rounds, room, huntKey]);
 
   const done = useCallback((s: RunSummary) => {
     rememberRun(s.runId);
-    if (s.award?.key) saveHuntKey(1, s.award.key);
+    if (s.award?.key) saveHuntKey(s.award.keyNo, s.award.key);
     setSummary(s);
     setPhase("results");
     setRefresh((n) => n + 1);
@@ -111,7 +116,7 @@ export default function GameClient({
         {error && <p role="alert" className="max-w-2xl mx-auto mt-3 text-[13px] text-red-dark">{error}</p>}
         <div className="max-w-2xl mx-auto mt-10 bg-white border border-gray-2 rounded-2xl p-5">
           <h3 className="text-[15px] font-bold text-navy mb-3">{room ? "Room leaderboard" : "Leaderboard"}</h3>
-          <Leaderboard game={game} roomCode={room?.code} highlight={summary.playerName} refreshKey={refresh} single={game === "hunt"} />
+          <Leaderboard game={game} roomCode={room?.code} highlight={summary.playerName} refreshKey={refresh} single={isHunt} />
         </div>
       </>
     );
@@ -141,8 +146,20 @@ export default function GameClient({
 
         {hunt && (
           <div className="bg-navy/5 rounded-xl p-4 mb-6 text-[13px] text-text">
-            <p className="font-bold text-navy text-[14px] mb-1">Win Key 1</p>
+            <p className="font-bold text-navy text-[14px] mb-1">Win Key {game === "sermon" ? 3 : 1}</p>
             <p>Score {hunt.passMark}% or more. Everyone who passes gets the key, and you can retry if you miss.</p>
+            {game === "sermon" && (
+              <label className="grid gap-1 text-[13px] font-semibold text-text mt-3 max-w-xs">
+                Key 2
+                <input
+                  value={huntKey}
+                  onChange={(e) => setHuntKey(e.target.value)}
+                  placeholder="Enter Key 2"
+                  autoComplete="off"
+                  className={field}
+                />
+              </label>
+            )}
             {hunt.window === "not-open" && <p className="mt-1 font-semibold text-red-dark">This game has not opened yet.</p>}
             {hunt.window === "closed" && <p className="mt-1 font-semibold text-red-dark">This game has closed.</p>}
           </div>
@@ -160,7 +177,7 @@ export default function GameClient({
           />
         </label>
 
-        {!room && game !== "hunt" && (
+        {!room && !isHunt && (
           <>
             <fieldset className="mb-6">
               <legend className="text-[13px] font-semibold text-text mb-2">Choose a level</legend>
@@ -218,7 +235,7 @@ export default function GameClient({
         {error && <p role="alert" className="text-[13px] text-red-dark mb-3">{error}</p>}
         <button
           onClick={() => void start()}
-          disabled={!nameOk || busy || (hunt !== null && hunt.window !== "open")}
+          disabled={!nameOk || busy || (hunt !== null && hunt.window !== "open") || (game === "sermon" && !huntKey.trim())}
           className="w-full bg-red text-white font-bold text-[15px] px-6 py-3.5 rounded-xl hover:bg-red-dark disabled:opacity-50 transition-colors"
         >
           {busy ? "Getting ready…" : room ? "Join this room" : "Start"}
@@ -235,7 +252,7 @@ export default function GameClient({
 
       <div className="bg-white border border-gray-2 rounded-2xl p-5 shadow-sm">
         <div className="flex gap-1 mb-4 border-b border-gray-2" role="tablist">
-          {(room || game === "hunt" ? (["board", "mine"] as const) : (["board", "mine", "rooms"] as const)).map((t) => (
+          {(room || isHunt ? (["board", "mine"] as const) : (["board", "mine", "rooms"] as const)).map((t) => (
             <button
               key={t}
               role="tab"
@@ -249,7 +266,7 @@ export default function GameClient({
             </button>
           ))}
         </div>
-        {tab === "board" && <Leaderboard game={game} roomCode={room?.code} highlight={name.trim()} refreshKey={refresh} single={game === "hunt"} />}
+        {tab === "board" && <Leaderboard game={game} roomCode={room?.code} highlight={name.trim()} refreshKey={refresh} single={isHunt} />}
         {tab === "mine" && <MyRuns game={game} refreshKey={refresh} />}
         {tab === "rooms" && <RoomTools game={game} />}
       </div>

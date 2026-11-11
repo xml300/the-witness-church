@@ -1,11 +1,14 @@
 /** Shared by the browser and the server. Nothing here contains answers. */
 
-export type GameId = "quiz" | "quote" | "hunt";
+export type GameId = "quiz" | "quote" | "hunt" | "sermon";
+
+/** The two quizzes that belong to the treasure hunt. */
+export const isHuntGame = (g: unknown): g is "hunt" | "sermon" => g === "hunt" || g === "sermon";
 export type Level = "easy" | "medium" | "hard" | "expert";
 export type LevelChoice = Level | "all";
 export type Translation = "modern" | "kjv";
 
-export const GAME_IDS: GameId[] = ["quiz", "quote", "hunt"];
+export const GAME_IDS: GameId[] = ["quiz", "quote", "hunt", "sermon"];
 export const LEVELS: Level[] = ["easy", "medium", "hard", "expert"];
 export const LEVEL_CHOICES: LevelChoice[] = [...LEVELS, "all"];
 export const TRANSLATIONS: Translation[] = ["modern", "kjv"];
@@ -79,6 +82,20 @@ export const GAMES: Record<GameId, GameMeta> = {
     slug: "church-trivia",
     path: "/hunt/trivia",
     title: "Church Trivia",
+    unit: "questions",
+    hasTranslation: false,
+    levelHelp: {
+      easy: "",
+      medium: "",
+      hard: "",
+      expert: "",
+    },
+  },
+  sermon: {
+    id: "sermon",
+    slug: "sermon-quiz",
+    path: "/hunt/sermon",
+    title: "Year 2 Sermon Quiz",
     unit: "questions",
     hasTranslation: false,
     levelHelp: {
@@ -183,7 +200,7 @@ export type RunSummary = {
   rank: number | null;
   participants: number;
   /** Treasure hunt only: whether the pass mark was reached, and the key won. */
-  award: { passMark: number; passed: boolean; key: string | null } | null;
+  award: { passMark: number; passed: boolean; key: string | null; keyNo: 1 | 3 } | null;
   review: (Feedback & { guess: Guess | null; question: PlayQuestion })[];
 };
 

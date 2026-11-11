@@ -3,7 +3,7 @@
 import { getAdmin } from "@/src/lib/auth";
 import type { QuizPayload, QuotePayload } from "@/src/lib/games/engine";
 import { parseQuiz, parseQuote } from "@/src/lib/games/validate";
-import type { GameId } from "@/src/lib/games/types";
+import { GAME_IDS, type GameId } from "@/src/lib/games/types";
 
 export type QuestionRow = {
   id: string;
@@ -21,8 +21,8 @@ const MAX_IMPORT = 500;
 
 function parseFor(game: GameId, raw: unknown) {
   if (game !== "quote") {
-    // Church Trivia questions have no level; store them as "medium".
-    const input = game === "hunt" && typeof raw === "object" && raw !== null ? { ...raw, difficulty: "medium" } : raw;
+    // Church Trivia and Sermon Quiz questions have no level; store them as "medium".
+    const input = (game === "hunt" || game === "sermon") && typeof raw === "object" && raw !== null ? { ...raw, difficulty: "medium" } : raw;
     const p = parseQuiz(input);
     return p.ok ? ({ ok: true, difficulty: p.value.difficulty, payload: p.value.payload } as const) : p;
   }
@@ -44,7 +44,7 @@ export async function saveQuestion(input: {
 }): Promise<Result<{ row: QuestionRow }>> {
   const admin = await getAdmin();
   if (!admin) return { ok: false, error: SIGNED_OUT };
-  if (input.game !== "quiz" && input.game !== "quote" && input.game !== "hunt") return { ok: false, error: "Unknown game." };
+  if (!GAME_IDS.includes(input.game)) return { ok: false, error: "Unknown game." };
   if (input.id && !UUID.test(input.id)) return { ok: false, error: "Invalid item." };
 
   const parsed = parseFor(input.game, input.data);
@@ -90,7 +90,7 @@ export async function importQuestions(
 ): Promise<Result<{ added: number; skipped: number; rows: QuestionRow[] }>> {
   const admin = await getAdmin();
   if (!admin) return { ok: false, error: SIGNED_OUT };
-  if (game !== "quiz" && game !== "quote" && game !== "hunt") return { ok: false, error: "Unknown game." };
+  if (!GAME_IDS.includes(game)) return { ok: false, error: "Unknown game." };
   if (typeof text !== "string" || text.length > 2_000_000) return { ok: false, error: "That text is too large." };
 
   let list: unknown;

@@ -35,6 +35,8 @@ export default function HuntAdmin({
   const [c, setC] = useState<ConfigInput>({ ...config, rewards: config.rewards ?? [] });
   const [opens, setOpens] = useState(toLocal(config.opens_at));
   const [closes, setCloses] = useState(toLocal(config.closes_at));
+  const [opens34, setOpens34] = useState(toLocal(config.g34_opens_at ?? null));
+  const [closes34, setCloses34] = useState(toLocal(config.g34_closes_at ?? null));
   const [people, setPeople] = useState<(Founder & { aliasText: string })[]>(
     founders.map((f) => ({ ...f, aliasText: f.aliases.join(", ") })),
   );
@@ -52,6 +54,8 @@ export default function HuntAdmin({
         ...c,
         opens_at: opens ? new Date(opens).toISOString() : null,
         closes_at: closes ? new Date(closes).toISOString() : null,
+        g34_opens_at: opens34 ? new Date(opens34).toISOString() : null,
+        g34_closes_at: closes34 ? new Date(closes34).toISOString() : null,
       });
       say("config", res.ok ? "Settings saved." : res.error, !res.ok);
     });
@@ -132,7 +136,7 @@ export default function HuntAdmin({
         <h2 className="text-[16px] font-bold text-navy">The four keys</h2>
         <p className="text-[13px] text-muted">
           The same for every team. Together they open the chest. Key 1 is shown to anyone who passes Game 1.
-          Key 2 is the word players build from the founders&rsquo; names. Keys 3 and 4 you send in WhatsApp.
+          Key 2 is the word players build from the founders&rsquo; names. Key 3 is handed to anyone who passes Game 3. Key 4 is handed to anyone who finds the key phrase in the pastor&rsquo;s video.
           Capital letters, spaces and punctuation are ignored when players type them.
         </p>
         <div className="grid sm:grid-cols-2 gap-3">
@@ -145,10 +149,72 @@ export default function HuntAdmin({
           <label className={label}>Key 3 (Game 3 prize)
             <input value={c.key3} onChange={(e) => set({ key3: e.target.value })} className={input} autoComplete="off" />
           </label>
-          <label className={label}>Key 4 (Game 4 key phrase)
+          <label className={label}>Key 4 (Game 4 prize)
             <input value={c.key4} onChange={(e) => set({ key4: e.target.value })} className={input} autoComplete="off" />
           </label>
         </div>
+      </section>
+
+      {/* ---------- games 3 and 4 ---------- */}
+      <section className={card}>
+        <h2 className="text-[16px] font-bold text-navy">Game 3 (Year 2 Sermon Quiz)</h2>
+        <p className="text-[13px] text-muted">
+          Played on your own, like Game 1. Add the questions under{" "}
+          <a href="/admin/games" className="underline text-navy">Game content</a>, on the Sermon Quiz tab. Anyone who
+          reaches the pass mark is handed Key 3 automatically.
+        </p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <label className={label}>Pass mark (%)
+            <input type="number" min={1} max={100} value={c.g3_pass_mark} onChange={(e) => set({ g3_pass_mark: Number(e.target.value) })} className={input} />
+          </label>
+          <label className={label}>Questions per round
+            <input type="number" min={1} max={50} value={c.g3_question_count} onChange={(e) => set({ g3_question_count: Number(e.target.value) })} className={input} />
+          </label>
+          <label className={label}>Attempts per name
+            <input
+              type="number"
+              min={1}
+              max={20}
+              placeholder="Unlimited"
+              value={c.g3_max_attempts ?? ""}
+              onChange={(e) => set({ g3_max_attempts: e.target.value ? Number(e.target.value) : null })}
+              className={input}
+            />
+          </label>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className={label}>Games 3 and 4 open
+            <input type="datetime-local" value={opens34} onChange={(e) => setOpens34(e.target.value)} className={input} />
+          </label>
+          <label className={label}>Games 3 and 4 close
+            <input type="datetime-local" value={closes34} onChange={(e) => setCloses34(e.target.value)} className={input} />
+          </label>
+        </div>
+        <p className="text-[12px] text-muted">Leave a date empty for no limit.</p>
+      </section>
+
+      <section className={card}>
+        <h2 className="text-[16px] font-bold text-navy">Game 4 (The Pastor&rsquo;s Video)</h2>
+        <p className="text-[13px] text-muted">
+          Players who have Key 3 see the video and type the key phrase they find in it. A correct phrase hands them Key 4 above. The phrase itself is not a key.
+        </p>
+        <label className={label}>Link to the video
+          <input value={c.video_url} onChange={(e) => set({ video_url: e.target.value })} className={input} placeholder="https://www.youtube.com/watch?v=…" autoComplete="off" />
+        </label>
+        <p className="text-[12px] text-muted">
+          YouTube, Vimeo and Google Drive links play on the page. A direct .mp4 link works too. For YouTube, set the
+          video to Unlisted so only people with the link can find it. Once a video is posted, anyone with its link can
+          watch it, but the key phrase itself stays hidden until a player types it correctly.
+        </p>
+        <label className={label}>Key phrase (the answer to find in the video; capital letters, spaces and punctuation are ignored)
+          <input value={c.key_phrase} onChange={(e) => set({ key_phrase: e.target.value })} className={input} autoComplete="off" />
+        </label>
+        <label className={label}>Video title (optional)
+          <input value={c.video_title} onChange={(e) => set({ video_title: e.target.value })} className={input} />
+        </label>
+        <label className={label}>Instructions shown above the video (optional)
+          <textarea rows={2} value={c.video_intro} onChange={(e) => set({ video_intro: e.target.value })} className={input} placeholder="Watch closely. Somewhere in this message is the key phrase." />
+        </label>
       </section>
 
       {/* ---------- game 2 ---------- */}
@@ -179,11 +245,12 @@ export default function HuntAdmin({
       {/* ---------- clues and rewards ---------- */}
       <section className={card}>
         <h2 className="text-[16px] font-bold text-navy">Clue pages</h2>
+        <p className="text-[12px] text-muted">Players read the first clue after Game 2 and the second after Game 3.</p>
         <label className={label}>Clue for Game 3 (opens with Key 2): title
           <input value={c.clue2_title} onChange={(e) => set({ clue2_title: e.target.value })} className={input} />
         </label>
         <label className={label}>Clue for Game 3: text
-          <textarea rows={3} value={c.clue2_body} onChange={(e) => set({ clue2_body: e.target.value })} className={input} placeholder="Head to the WhatsApp group…" />
+          <textarea rows={3} value={c.clue2_body} onChange={(e) => set({ clue2_body: e.target.value })} className={input} placeholder="Next up is the Year 2 Sermon Quiz…" />
         </label>
         <label className={label}>Clue for Game 4 (opens with Key 3): title
           <input value={c.clue3_title} onChange={(e) => set({ clue3_title: e.target.value })} className={input} />

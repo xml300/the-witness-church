@@ -87,3 +87,10 @@ Both games share one scale: Easy, Medium, Hard, Expert, plus All levels. For Bib
 1. Run `supabase/migration-006-hunt.sql` in the SQL Editor (after migration-004).
 2. Manage it at `/admin/hunt`; add Church Trivia questions at `/admin/games`. Players start at `/hunt`.
 3. See DEPLOYMENT.md for the dry-run checklist and event-day notes.
+
+### Games 3 and 4 (in the app)
+
+1. Run `supabase/migration-007-games-3-4.sql`. It only adds things (a `sermon` game id and new settings columns), so it does not reset runs, keys or chest openings and is safe while the hunt is live. Run it **before** deploying the new code.
+2. Game 3, the Year 2 Sermon Quiz (`/hunt/sermon`): add questions at `/admin/games` on the Sermon Quiz tab. It opens with Key 2 and hands out Key 3 to anyone who passes. Set its pass mark, size and attempts at `/admin/hunt`.
+3. Game 4, the pastor's video: paste the video link at `/admin/hunt`. Players with Key 3 watch it on the hunt page and type the key phrase you set. A correct phrase hands them Key 4.
+4. Keys already handed out in WhatsApp still work: typing Key 3 on `/hunt` still opens Game 4.

@@ -5,7 +5,7 @@ import { gamePath, roomPath } from "@/src/components/games/util";
 import { getContent } from "@/src/lib/content/get-content";
 import { getSiteData } from "@/src/lib/data/site-data";
 import { getRoom, poolCounts } from "@/src/lib/games/service";
-import { GAMES, type GameId } from "@/src/lib/games/types";
+import { GAMES, isHuntGame, type GameId } from "@/src/lib/games/types";
 import { huntStatus } from "@/src/lib/hunt/service";
 import { gamesConfigured } from "@/src/lib/supabase/service";
 
@@ -22,6 +22,10 @@ const INTRO: Record<GameId, { tag: string; intro: string }> = {
     tag: "Treasure hunt · Game 1",
     intro: "How well do you know The Witness Church? Reach the pass mark to win Key 1.",
   },
+  sermon: {
+    tag: "Treasure hunt · Game 3",
+    intro: "How closely did you follow the sermons of year 2? Reach the pass mark to win Key 3.",
+  },
 };
 
 /** Server wrapper for a game page, or for a room of that game. */
@@ -37,8 +41,8 @@ export default async function GamePage({ game, code }: { game: GameId; code?: st
       </p>
     );
   } else {
-    const hunt = game === "hunt" ? await huntStatus() : null;
-    const room = code && game !== "hunt" ? await getRoom(code) : null;
+    const hunt = isHuntGame(game) ? await huntStatus(game) : null;
+    const room = code && !isHuntGame(game) ? await getRoom(code) : null;
     if (code && !room) notFound();
     if (room && room.game !== game) redirect(roomPath(room.game, room.code));
     const counts = await poolCounts(game);

@@ -4,7 +4,7 @@
 import { createHash, randomInt } from "node:crypto";
 import { headers } from "next/headers";
 import { serviceClient } from "@/src/lib/supabase/service";
-import { getHuntConfig, huntWindow } from "@/src/lib/hunt/config";
+import { getHuntConfig, huntWindow, quizStage, sameKey } from "@/src/lib/hunt/config";
 import {
   buildQuizQuestion,
   buildQuoteQuestion,
@@ -20,6 +20,7 @@ import {
 import {
   DEFAULT_ROUND,
   GAME_IDS,
+  isHuntGame,
   LEVEL_CHOICES,
   LEVEL_WEIGHT,
   TRANSLATIONS,
@@ -154,7 +155,7 @@ export async function createRoom(input: {
 }): Promise<Result<RoomInfo>> {
   const db = serviceClient();
   if (!db) return { ok: false, error: NOT_READY };
-  if (!isGame(input.game) || input.game === "hunt") return { ok: false, error: "Unknown game." };
+  if (!isGame(input.game) || isHuntGame(input.game)) return { ok: false, error: "Unknown game." };
   const host = cleanName(input.hostName);
   if (!host) return { ok: false, error: "Enter a name for the room host (1 to 30 letters)." };
   if (!isLevelChoice(input.difficulty)) return { ok: false, error: "Pick a difficulty." };
@@ -212,6 +213,8 @@ export async function startRun(input: {
   translation: unknown;
   questionCount: unknown;
   roomCode?: unknown;
+  /** Game 3 only: Key 2, which opens the sermon quiz. */
+  huntKey?: unknown;
 }): Promise<Result<StartedRun>> {
   const db = serviceClient();
   if (!db) return { ok: false, error: NOT_READY };
@@ -239,28 +242,32 @@ export async function startRun(input: {
     difficulty = room.difficulty;
     translation = room.translation;
     count = room.question_count;
-  } else if (input.game === "hunt") {
+  } else if (isHuntGame(input.game)) {
     const hunt = await getHuntConfig();
     if (!hunt) return { ok: false, error: NOT_READY };
-    const w = huntWindow(hunt);
-    if (w === "not-open") return { ok: false, error: "The treasure hunt has not opened yet." };
-    if (w === "closed") return { ok: false, error: "The treasure hunt trivia has closed." };
-    if (hunt.max_attempts != null) {
+    const stage = quizStage(hunt, input.game);
+    const w = huntWindow({ opens_at: stage.opensAt, closes_at: stage.closesAt });
+    if (w === "not-open") return { ok: false, error: "This game has not opened yet." };
+    if (w === "closed") return { ok: false, error: "This game has closed." };
+    if (input.game === "sermon" && !sameKey(input.huntKey, hunt.key2)) {
+      return { ok: false, error: "Enter Key 2 to open the Sermon Quiz." };
+    }
+    if (stage.maxAttempts != null) {
       const { count: used } = await db
         .from("game_runs")
         .select("id", { count: "exact", head: true })
-        .eq("game", "hunt")
+        .eq("game", input.game)
         .ilike("player_name", name.replace(/[%_\\]/g, "\\$&"));
-      if ((used ?? 0) >= hunt.max_attempts) {
-        return { ok: false, error: `You have used all ${hunt.max_attempts} attempt(s).` };
+      if ((used ?? 0) >= stage.maxAttempts) {
+        return { ok: false, error: `You have used all ${stage.maxAttempts} attempt(s).` };
       }
-      attemptsLeftHunt = hunt.max_attempts - (used ?? 0) - 1;
+      attemptsLeftHunt = stage.maxAttempts - (used ?? 0) - 1;
       attemptNoHunt = (used ?? 0) + 1;
     }
-    game = "hunt";
+    game = input.game;
     difficulty = "all";
     translation = "modern";
-    count = hunt.question_count;
+    count = stage.count;
   } else {
     if (!isGame(input.game)) return { ok: false, error: "Unknown game." };
     if (!isLevelChoice(input.difficulty)) return { ok: false, error: "Pick a difficulty." };
@@ -470,15 +477,17 @@ export async function finishRun(runId: unknown): Promise<Result<RunSummary>> {
   });
   const mine = board.find((b) => b.playerName.toLowerCase() === run!.player_name.toLowerCase());
 
-  // Treasure hunt: passing wins Key 1.
+  // Treasure hunt: passing wins Key 1 (Church Trivia) or Key 3 (Sermon Quiz).
   let award: RunSummary["award"] = null;
-  if (run.game === "hunt") {
+  if (isHuntGame(run.game)) {
     const hunt = await getHuntConfig();
-    const passed = !!hunt && (run.percentage ?? 0) >= hunt.pass_mark;
+    const stage = hunt ? quizStage(hunt, run.game) : null;
+    const passed = !!stage && (run.percentage ?? 0) >= stage.passMark;
     award = {
-      passMark: hunt?.pass_mark ?? 70,
+      passMark: stage?.passMark ?? 70,
       passed,
-      key: passed && hunt?.key1 ? hunt.key1 : null,
+      key: passed && stage?.key ? stage.key : null,
+      keyNo: stage?.keyNo ?? (run.game === "sermon" ? 3 : 1),
     };
   }
 
