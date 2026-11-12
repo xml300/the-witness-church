@@ -209,6 +209,13 @@ export default function HuntAdmin({
         <label className={label}>Key phrase (the answer to find in the video; capital letters, spaces and punctuation are ignored)
           <input value={c.key_phrase} onChange={(e) => set({ key_phrase: e.target.value })} className={input} autoComplete="off" />
         </label>
+        <label className={label}>Other accepted answers (optional, one per line)
+          <textarea rows={3} value={c.phrase_alts} onChange={(e) => set({ phrase_alts: e.target.value })} className={input} placeholder={"Another way to say it\nA shorter version"} />
+        </label>
+        <p className="text-[12px] text-muted">
+          A player passes if what they type contains the key phrase or any accepted answer, so a whole sentence with the
+          phrase inside it works. Capitals, spaces and punctuation are ignored. Keep each answer at least 3 letters long.
+        </p>
         <label className={label}>Video title (optional)
           <input value={c.video_title} onChange={(e) => set({ video_title: e.target.value })} className={input} />
         </label>
