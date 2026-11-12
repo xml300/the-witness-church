@@ -33,6 +33,7 @@ export type ConfigInput = {
   g34_opens_at: string | null;
   g34_closes_at: string | null;
   key_phrase: string;
+  phrase_alts: string;
   video_url: string;
   video_title: string;
   video_intro: string;
@@ -123,6 +124,12 @@ export async function saveHuntConfig(input: ConfigInput): Promise<Result> {
       g34_opens_at: opens34,
       g34_closes_at: closes34,
       key_phrase: s(input.key_phrase, 200),
+      phrase_alts: (typeof input.phrase_alts === "string" ? input.phrase_alts : "")
+        .split(/\r?\n/)
+        .map((l) => l.trim().slice(0, 200))
+        .filter(Boolean)
+        .slice(0, 30)
+        .join("\n"),
       video_url: video,
       video_title: s(input.video_title, 120),
       video_intro: s(input.video_intro, 600),

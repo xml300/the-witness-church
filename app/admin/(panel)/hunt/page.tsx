@@ -16,6 +16,7 @@ const NEW_DEFAULTS = {
   g34_opens_at: null,
   g34_closes_at: null,
   key_phrase: "",
+  phrase_alts: "",
   video_url: "",
   video_title: "",
   video_intro: "",

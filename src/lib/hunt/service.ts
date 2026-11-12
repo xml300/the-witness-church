@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { serviceClient } from "@/src/lib/supabase/service";
 import { cleanName } from "@/src/lib/games/engine";
-import { getHuntConfig, huntWindow, norm, quizStage, sameKey, type HuntGameId, type HuntWindow } from "./config";
+import { getHuntConfig, huntWindow, norm, phraseMatches, quizStage, sameKey, type HuntGameId, type HuntWindow } from "./config";
 
 export type Res<T> = { ok: true; data: T } | { ok: false; error: string };
 
@@ -211,7 +211,7 @@ export async function submitKeyPhrase(key3: unknown, phrase: unknown): Promise<R
   const w = huntWindow({ opens_at: c.g34_opens_at, closes_at: c.g34_closes_at });
   if (w === "not-open") return { ok: false, error: "This game has not opened yet." };
   if (w === "closed") return { ok: false, error: "This game has closed." };
-  if (!sameKey(phrase, c.key_phrase)) return { ok: false, error: "That is not the key phrase. Watch the video again." };
+  if (!phraseMatches(phrase, c.key_phrase, c.phrase_alts)) return { ok: false, error: "That is not the key phrase. Watch the video again." };
   return { ok: true, data: { key4: c.key4 } };
 }
 

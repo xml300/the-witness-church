@@ -36,6 +36,8 @@ alter table public.hunt_config add column if not exists g34_closes_at timestampt
 -- Game 4: the pastor's video. Players find a key phrase in it and type it;
 -- a correct phrase hands them Key 4 (key4 itself is unchanged).
 alter table public.hunt_config add column if not exists key_phrase text not null default '';
+-- Other answers that also count, one per line.
+alter table public.hunt_config add column if not exists phrase_alts text not null default '';
 alter table public.hunt_config add column if not exists video_url   text not null default '';
 alter table public.hunt_config add column if not exists video_title text not null default '';
 alter table public.hunt_config add column if not exists video_intro text not null default '';

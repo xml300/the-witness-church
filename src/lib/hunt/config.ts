@@ -29,6 +29,7 @@ export type HuntConfig = {
   g34_opens_at: string | null;
   g34_closes_at: string | null;
   key_phrase: string;
+  phrase_alts: string;
   video_url: string;
   video_title: string;
   video_intro: string;
@@ -41,6 +42,7 @@ const LATER_DEFAULTS = {
   g34_opens_at: null,
   g34_closes_at: null,
   key_phrase: "",
+  phrase_alts: "",
   video_url: "",
   video_title: "",
   video_intro: "",
@@ -100,4 +102,16 @@ export function quizStage(c: HuntConfig, game: HuntGameId) {
         opensAt: c.opens_at,
         closesAt: c.closes_at,
       };
+}
+
+/** Game 4: the typed answer passes if it contains the key phrase (or any other
+ *  accepted answer) anywhere in it. Capitals, spaces and punctuation are
+ *  ignored. A very short accepted answer must match the whole entry, so a
+ *  one-letter answer cannot pass by accident. */
+export function phraseMatches(entered: unknown, phrase: string, alts: string): boolean {
+  if (typeof entered !== "string") return false;
+  const typed = norm(entered.slice(0, 300));
+  if (!typed) return false;
+  const accepted = [phrase, ...alts.split(/\r?\n/)].map(norm).filter(Boolean);
+  return accepted.some((a) => (a.length >= 3 ? typed.includes(a) : typed === a));
 }
