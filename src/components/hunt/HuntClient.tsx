@@ -13,7 +13,8 @@ import {
   unlockFoundersAction,
 } from "@/app/hunt/actions";
 import type { ChestResult, Clue, FoundersView, HuntStatus, VideoView } from "@/src/lib/hunt/service";
-import { clearHuntKeys, loadHuntKeys, saveHuntKey } from "@/src/components/games/util";
+import { clearHuntKeys, loadHuntKeys, loadName, saveHuntKey, saveName } from "@/src/components/games/util";
+import HuntBoards from "./HuntBoards";
 
 type Board = Awaited<ReturnType<typeof chestBoardAction>>;
 
@@ -142,6 +143,8 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
   const [clue3, setClue3] = useState<Clue | null>(null);
   const [video, setVideo] = useState<VideoView | null>(null);
   const [phrase, setPhrase] = useState("");
+  const [player, setPlayer] = useState(() => loadName());
+  const [boardKey, setBoardKey] = useState(0);
   const [team, setTeam] = useState("");
   const [boxes, setBoxes] = useState([saved[1], saved[2], saved[3], saved[4]]);
   const [result, setResult] = useState<ChestResult | null>(null);
@@ -190,8 +193,10 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
   const sendWord = (e: React.FormEvent) => {
     e.preventDefault();
     void run("w", async () => {
-      const r = await submitWordAction(k1, filledNames(), word);
+      const r = await submitWordAction(k1, filledNames(), word, player);
       if (!r.ok) return say("w", r.error);
+      saveName(player.trim());
+      setBoardKey((n) => n + 1);
       saveHuntKey(2, r.data.key2);
       setKeys((k) => ({ ...k, 2: r.data.key2 }));
       setK2(r.data.key2);
@@ -223,8 +228,10 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
   const sendPhrase = (e: React.FormEvent) => {
     e.preventDefault();
     void run("p", async () => {
-      const r = await submitKeyPhraseAction(keys[3] || k3, phrase);
+      const r = await submitKeyPhraseAction(keys[3] || k3, phrase, player);
       if (!r.ok) return say("p", r.error);
+      saveName(player.trim());
+      setBoardKey((n) => n + 1);
       saveHuntKey(4, r.data.key4);
       setKeys((k) => ({ ...k, 4: r.data.key4 }));
       setBoxes((b) => [b[0], b[1], b[2], r.data.key4]);
@@ -349,7 +356,8 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
                 {wordHint || "Use the names to work out the secret word."}
               </p>
               <input value={word} onChange={(e) => setWord(e.target.value)} placeholder="The word" className={field} autoComplete="off" />
-              <button disabled={!word.trim() || busy === "w"} className={primary}>
+              <input value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={30} placeholder="Your name (for the leaderboard)" className={field} autoComplete="nickname" />
+              <button disabled={!word.trim() || !player.trim() || busy === "w"} className={primary}>
                 {busy === "w" ? "Checking…" : "Submit the word"}
               </button>
               {msg.w && <p role="alert" className="text-[13px] text-red-dark">{msg.w}</p>}
@@ -410,7 +418,8 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
                   <form onSubmit={sendPhrase} className="mt-4 grid gap-3 max-w-sm">
                     <p className="text-[14px] text-muted">Watch closely, then type the key phrase.</p>
                     <input value={phrase} onChange={(e) => setPhrase(e.target.value)} placeholder="The key phrase" className={field} autoComplete="off" />
-                    <button disabled={!phrase.trim() || busy === "p"} className={primary}>
+                    <input value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={30} placeholder="Your name (for the leaderboard)" className={field} autoComplete="nickname" />
+                    <button disabled={!phrase.trim() || !player.trim() || busy === "p"} className={primary}>
                       {busy === "p" ? "Checking…" : "Submit the key phrase"}
                     </button>
                     {msg.p && <p role="alert" className="text-[13px] text-red-dark">{msg.p}</p>}
@@ -487,6 +496,8 @@ function HuntBody({ status, board: initialBoard }: { status: HuntStatus; board: 
           </div>
         )}
       </Step>
+
+      <HuntBoards refreshKey={boardKey} />
 
       {(keys[1] || keys[2] || keys[3] || keys[4]) && (
         <button
