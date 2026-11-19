@@ -3,6 +3,7 @@
 import {
   checkFounders,
   chestBoard,
+  completionBoard,
   openChest,
   submitKeyPhrase,
   submitWord,
@@ -11,6 +12,7 @@ import {
   unlockFounders,
   type ChestResult,
   type Clue,
+  type FinishRow,
   type FoundersView,
   type Res,
   type VideoView,
@@ -31,8 +33,9 @@ export async function submitWordAction(
   key1: unknown,
   names: unknown,
   word: unknown,
+  playerName?: unknown,
 ): Promise<Res<{ key2: string; clue: Clue }>> {
-  return submitWord(key1, names, word);
+  return submitWord(key1, names, word, playerName);
 }
 
 export async function unlockClueAction(stage: unknown, key: unknown): Promise<Res<Clue>> {
@@ -51,6 +54,14 @@ export async function unlockGame4Action(key3: unknown): Promise<Res<{ clue: Clue
   return unlockGame4(key3);
 }
 
-export async function submitKeyPhraseAction(key3: unknown, phrase: unknown): Promise<Res<{ key4: string }>> {
-  return submitKeyPhrase(key3, phrase);
+export async function submitKeyPhraseAction(
+  key3: unknown,
+  phrase: unknown,
+  playerName?: unknown,
+): Promise<Res<{ key4: string }>> {
+  return submitKeyPhrase(key3, phrase, playerName);
+}
+
+export async function completionBoardAction(stage: unknown): Promise<FinishRow[]> {
+  return completionBoard(stage === 4 ? 4 : 2);
 }

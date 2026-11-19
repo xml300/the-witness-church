@@ -1,7 +1,7 @@
 "use client";
 
 import "./editor.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { SiteContent } from "@/src/lib/content/types";
 import { discardDraft, publishDraft, saveDraft, signOut } from "../actions";
 import { setPath } from "./fields";
@@ -30,6 +30,16 @@ const DEVICES: Record<Device, { w: number; label: string }> = {
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
+
+/** Phones and small tablets get a one-pane layout: edit OR preview. */
+const NARROW = "(max-width: 900px)";
+const watchNarrow = (cb: () => void) => {
+  const m = window.matchMedia(NARROW);
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+const isNarrow = () => window.matchMedia(NARROW).matches;
+const serverNarrow = () => false;
 
 const differs = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
 
@@ -73,7 +83,11 @@ export default function Editor({
   const [tab, setTab] = useState<Tab>("sections");
   const [sel, setSel] = useState<string | null>(null);
   const [pick, setPick] = useState<string | null>(null);
-  const [dev, setDev] = useState<Device>("desktop");
+  const narrow = useSyncExternalStore(watchNarrow, isNarrow, serverNarrow);
+  const [devPick, setDev] = useState<Device | null>(null);
+  const dev: Device = devPick ?? (narrow ? "phone" : "desktop");
+  const [view, setView] = useState<"edit" | "preview">("edit");
+  const narrowRef = useRef(false);
   const [page, setPage] = useState<PageId>("home");
   const [eventFocus, setEventFocus] = useState<EventFocus>(null);
   const [popOpen, setPopOpen] = useState(false);
@@ -101,6 +115,9 @@ export default function Editor({
   useEffect(() => {
     selRef.current = sel;
   }, [sel]);
+  useEffect(() => {
+    narrowRef.current = narrow;
+  }, [narrow]);
 
   const toast = useCallback((m: string) => {
     setToastMsg(m);
@@ -198,6 +215,11 @@ export default function Editor({
           // The calendar sends "select nothing" just before "add event";
           // the second message wins.
           setSel(m.id);
+          // On a phone a tap in the preview opens that section's fields.
+          if (narrowRef.current && m.id) {
+            ready.current = false;
+            setView("edit");
+          }
           if (!m.id) setEventFocus(null);
           if (m.id) {
             setTab("sections");
@@ -274,7 +296,9 @@ export default function Editor({
     );
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+    // The stage only exists in the preview pane on a phone, so watch it again
+    // whenever the layout or pane changes.
+  }, [narrow, view]);
 
   useEffect(() => {
     const onUnload = (e: BeforeUnloadEvent) => {
@@ -359,7 +383,8 @@ export default function Editor({
   /* ---- layout numbers ---- */
   const frameW = DEVICES[dev].w + (dev === "desktop" ? 2 : 16);
   const zoom = Math.max(0.2, Math.min(1, (stage.w - 32) / frameW));
-  const frameH = Math.max(480, (stage.h - 32) / zoom);
+  // Capped so a layout glitch can never grow the frame without limit.
+  const frameH = Math.min(4000, Math.max(480, (stage.h - 32) / zoom));
 
   const ctx: EditorCtx = {
     S, mutate, page, sel, setSel, pick, setPick, setTab, toast, info, library,
@@ -374,6 +399,34 @@ export default function Editor({
           ? `Draft saved · ${changes.length} unpublished`
           : "Live site is up to date";
   const statusDot = save === "error" ? "err" : changes.length || save === "saving" ? "dirty" : "";
+
+  const extraLinks = (
+    <>
+        <a className="ed-btn ed-quiet" href="/admin/prayers" style={{ textDecoration: "none" }}>
+          Prayers
+          {info.pendingPrayers > 0 && <span className="ed-count ed-count-alt">{info.pendingPrayers}</span>}
+        </a>
+
+        <a className="ed-btn ed-quiet" href="/admin/games" style={{ textDecoration: "none" }}>
+          Game content
+        </a>
+
+        <a className="ed-btn ed-quiet" href="/admin/hunt" style={{ textDecoration: "none" }}>
+          Treasure hunt
+        </a>
+
+        <button
+          type="button"
+          className="ed-btn ed-quiet"
+          onClick={async () => {
+            await signOut();
+            window.location.assign("/admin/login");
+          }}
+        >
+          Sign out
+        </button>
+    </>
+  );
 
   return (
     <div className="ed-root">
@@ -408,6 +461,25 @@ export default function Editor({
           </select>
         </label>
 
+        {narrow && (
+          <div className="ed-seg ed-viewseg" role="group" aria-label="Edit or preview">
+            {(["edit", "preview"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => {
+                  ready.current = false;
+                  setView(v);
+                }}
+              >
+                {v === "edit" ? "Edit" : "Preview"}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(!narrow || view === "preview") && (
         <div className="ed-seg" role="group" aria-label="Preview size">
           {(Object.keys(DEVICES) as Device[]).map((k) => (
             <button key={k} type="button" aria-pressed={dev === k} onClick={() => setDev(k)}>
@@ -415,6 +487,7 @@ export default function Editor({
             </button>
           ))}
         </div>
+        )}
 
         <div className="ed-pair">
           <button type="button" className="ed-iconbtn" onClick={undo} disabled={!hist.undo} aria-label="Undo" title="Undo (Ctrl+Z)">
@@ -467,32 +540,19 @@ export default function Editor({
           )}
         </div>
 
-        <a className="ed-btn ed-quiet" href="/admin/prayers" style={{ textDecoration: "none" }}>
-          Prayers
-          {info.pendingPrayers > 0 && <span className="ed-count ed-count-alt">{info.pendingPrayers}</span>}
-        </a>
-
-        <a className="ed-btn ed-quiet" href="/admin/games" style={{ textDecoration: "none" }}>
-          Game content
-        </a>
-
-        <a className="ed-btn ed-quiet" href="/admin/hunt" style={{ textDecoration: "none" }}>
-          Treasure hunt
-        </a>
-
-        <button
-          type="button"
-          className="ed-btn ed-quiet"
-          onClick={async () => {
-            await signOut();
-            window.location.assign("/admin/login");
-          }}
-        >
-          Sign out
-        </button>
+        {narrow ? (
+          <details className="ed-more">
+            <summary className="ed-btn ed-quiet">More</summary>
+            <div className="ed-morebox">{extraLinks}</div>
+          </details>
+        ) : (
+          extraLinks
+        )}
       </header>
 
       <div className="ed-main">
+        {(!narrow || view === "edit") && (
+        <>
         <nav className="ed-rail" aria-label="Editor tools">
           {(
             [
@@ -531,7 +591,10 @@ export default function Editor({
               <PagePanel {...ctx} />
             ))}
         </aside>
+        </>
+        )}
 
+        {(!narrow || view === "preview") && (
         <main className="ed-stage" ref={stageEl}>
           <div className="ed-devwrap" style={{ zoom }}>
             <div className={`ed-frame ${dev}`} style={{ width: frameW }}>
@@ -565,6 +628,7 @@ export default function Editor({
             </div>
           )}
         </main>
+        )}
       </div>
 
       <div className={`ed-toast${toastMsg ? " on" : ""}`} role="status">

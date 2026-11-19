@@ -146,6 +146,7 @@ export async function submitWord(
   key1: unknown,
   names: unknown,
   word: unknown,
+  playerName?: unknown,
 ): Promise<Res<{ key2: string; clue: Clue }>> {
   const c = await getHuntConfig();
   if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
@@ -157,7 +158,47 @@ export async function submitWord(
     return { ok: false, error: "Your list of founding members is not complete yet." };
   }
   if (!sameKey(word, c.key2)) return { ok: false, error: "That is not the word. Look at the names again." };
+  const who = cleanName(playerName);
+  if (!who) return { ok: false, error: "Enter your name (1 to 30 letters) so you appear on the leaderboard." };
+  await recordCompletion(2, who);
   return { ok: true, data: { key2: c.key2, clue: { title: c.clue2_title, body: c.clue2_body } } };
+}
+
+/* ------------------------------------------- finish-order leaderboards */
+
+/** Games 2 and 4 are solved, not scored, so their board is who finished first.
+ *  Best effort: if the table is missing the player still passes. */
+async function recordCompletion(stage: 2 | 4, name: string): Promise<void> {
+  const db = serviceClient();
+  if (!db) return;
+  try {
+    await db.from("hunt_completions").insert({
+      stage,
+      player_name: name,
+      name_key: name.trim().toLowerCase(),
+      ip_hash: await ipHash(),
+    });
+  } catch {
+    /* ignore: a repeat finish or a missing table must not block the player */
+  }
+}
+
+export type FinishRow = { place: number; name: string; at: string };
+
+export async function completionBoard(stage: 2 | 4): Promise<FinishRow[]> {
+  const db = serviceClient();
+  if (!db) return [];
+  const { data } = await db
+    .from("hunt_completions")
+    .select("player_name,completed_at")
+    .eq("stage", stage)
+    .order("completed_at", { ascending: true })
+    .limit(100);
+  return ((data ?? []) as { player_name: string; completed_at: string }[]).map((r, i) => ({
+    place: i + 1,
+    name: r.player_name,
+    at: r.completed_at,
+  }));
 }
 
 /* ------------------------------------------------------- clue pages */
@@ -202,7 +243,11 @@ export async function unlockGame4(key3: unknown): Promise<Res<{ clue: Clue; vide
 }
 
 /** The right phrase from the video wins Key 4 (the phrase itself is not a key). */
-export async function submitKeyPhrase(key3: unknown, phrase: unknown): Promise<Res<{ key4: string }>> {
+export async function submitKeyPhrase(
+  key3: unknown,
+  phrase: unknown,
+  playerName?: unknown,
+): Promise<Res<{ key4: string }>> {
   const c = await getHuntConfig();
   if (!c || !serviceClient()) return { ok: false, error: NOT_READY };
   const g = await allowGuess();
@@ -212,6 +257,9 @@ export async function submitKeyPhrase(key3: unknown, phrase: unknown): Promise<R
   if (w === "not-open") return { ok: false, error: "This game has not opened yet." };
   if (w === "closed") return { ok: false, error: "This game has closed." };
   if (!phraseMatches(phrase, c.key_phrase, c.phrase_alts)) return { ok: false, error: "That is not the key phrase. Watch the video again." };
+  const who = cleanName(playerName);
+  if (!who) return { ok: false, error: "Enter your name (1 to 30 letters) so you appear on the leaderboard." };
+  await recordCompletion(4, who);
   return { ok: true, data: { key4: c.key4 } };
 }
 

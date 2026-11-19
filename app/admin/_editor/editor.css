@@ -214,14 +214,37 @@
 }
 .ed-toast.on { opacity: 1; transform: translate(-50%, 0); }
 
+/* Small laptops and tablets held sideways: slimmer side columns so the preview keeps room. */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .ed-main { grid-template-columns: 64px 280px minmax(0, 1fr); }
+  .ed-top { gap: 8px; padding: 8px 10px; }
+}
+
+/* Phones and small tablets: one pane at a time (Edit or Preview). The stage has a FIXED
+   height here. It used to size itself from its content, and the preview frame sized itself
+   from the stage, so each grew the other without end. That was the twitching, and it ended
+   with the phone browser running out of memory and closing. */
 @media (max-width: 900px) {
-  .ed-root { position: static; display: block; min-height: 100vh; }
-  .ed-main { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(70vh, auto); }
-  .ed-rail { flex-direction: row; justify-content: center; border-right: 0; border-bottom: 1px solid var(--line); padding: 6px; }
-  .ed-rail button { padding: 8px 16px; }
-  .ed-panel { border-right: 0; border-bottom: 1px solid var(--line); max-height: 46vh; }
+  .ed-root { position: static; display: block; min-height: 100vh; min-height: 100dvh; }
+  .ed-top { position: sticky; top: 0; padding: 8px 12px; gap: 8px; }
   .ed-crumb { flex-basis: 100%; }
+  .ed-crumb small { display: none; }
+  .ed-viewseg button { padding: 6px 18px; }
+  .ed-status { display: none; }
+  .ed-main { display: block; }
+  .ed-rail { flex-direction: row; justify-content: center; border-right: 0; border-bottom: 1px solid var(--line); padding: 6px; }
+  .ed-rail button { padding: 8px 16px; flex: 1; }
+  .ed-panel { border-right: 0; max-height: none; overflow: visible; min-height: 60vh; min-height: 60dvh; padding: 14px 12px 40px; }
+  .ed-stage { height: calc(100vh - 150px); height: calc(100dvh - 150px); min-height: 420px; overflow: hidden; padding: 8px; }
   .ed-helper { display: none; }
-  .ed-stage { overflow: auto; }
+  .ed-more { position: relative; }
+  .ed-more summary { list-style: none; cursor: pointer; }
+  .ed-more summary::-webkit-details-marker { display: none; }
+  .ed-morebox {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; min-width: 180px; display: grid; gap: 4px;
+    background: var(--raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); padding: 8px;
+  }
+  .ed-morebox .ed-btn { justify-content: flex-start; width: 100%; }
+  .ed-field input[type="text"], .ed-field input[type="number"], .ed-field textarea, .ed-field select { font-size: 16px; } /* stops iOS zooming into fields */
 }
 @media (prefers-reduced-motion: reduce) { .ed-root * { transition: none !important; } }
